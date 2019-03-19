@@ -1,4 +1,4 @@
-[
+var bigdata = [
 	{
 		"columns": [
 			[
