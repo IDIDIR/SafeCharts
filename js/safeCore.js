@@ -22,22 +22,26 @@ class Line {
 
 const DEFAULTS = {
 	scale: 0.0001,	// canvas scale does not work correctly((9
-	xAxis: {
-		offset: 30,
-		padding: 10,
-		// lines: dynamic
-		color: '#CFCFCFCF',
-	},
-	yAxis: {
-		offset: 30,
-		padding: 0,
-		labels: 6,
-		lines: 6,
-		color: '#ADADADAD',
-	},
 	lineJoin: 'round',
 	rowHeight: 60,
 	rowWidth: 60,	// dynamic
+	xAxis: {
+		// offset: 0,	// dynamic
+		margin: 30,
+		padding: 10,
+		// lines: dynamic,
+		color: '#CFCFCFCF',
+		step: 1,
+	},
+	yAxis: {
+		// offset: 0,	// dynamic
+		margin: 30,
+		padding: 0,
+		labels: 6,
+		color: '#ADADADAD',
+		lines: 6,
+		step: 60,
+	},
 }
 
 var parseBadStruct = function() {
@@ -67,7 +71,7 @@ var drawAxisLables = function() {
 	ctx.fillStyle = DEFAULTS.yAxis.color
 
 	ctx.textAlign = 'left'
-	ctx.translate(0, -DEFAULTS.yAxis.offset)
+	ctx.translate(0, -DEFAULTS.yAxis.margin)
 	ctx.beginPath()
 	// yAxis labels (static)
 	for (var i = 0; i < rowCount; i++) {
@@ -76,7 +80,7 @@ var drawAxisLables = function() {
 	ctx.stroke()
 
 	ctx.textAlign = 'center'
-	ctx.translate(DEFAULTS.xAxis.offset, DEFAULTS.yAxis.offset)
+	ctx.translate(DEFAULTS.xAxis.margin, DEFAULTS.yAxis.margin)
 	ctx.beginPath()
 	// xAxis labels (dynamic)
 	for (var i = 0; i < colCount; i++) {
@@ -84,7 +88,7 @@ var drawAxisLables = function() {
 	}
 	ctx.stroke()
 	
-	ctx.translate(0, -DEFAULTS.yAxis.offset)
+	ctx.translate(0, -DEFAULTS.yAxis.margin)
 }
 
 var drawPlotLines = function() {
@@ -125,9 +129,12 @@ var drawEtcChart = function() {
 		ctx.stroke()
 
 		line.data.forEach((dot,i) => {
-			ctx.beginPath()
-			ctx.arc(DEFAULTS.rowWidth*i, rev(dot), 5, 0, 2 * Math.PI)
-			ctx.stroke()
+			if(i) {
+				ctx.beginPath()
+				ctx.arc(DEFAULTS.rowWidth*i, rev(dot), 5, 0, 2 * Math.PI)
+				ctx.clearRect(DEFAULTS.rowWidth*i-5,rev(dot)-5,5*2,5*2);
+				ctx.stroke()
+			}
 		})
 
 	})
@@ -137,7 +144,9 @@ var drawEtcChart = function() {
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 const CANVAS = document.getElementById("safeChart")
-CANVAS.setAttribute('height', `${DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.offset}px`)
+const MAPSEL = document.getElementById("mapSelector")
+const MAPLAY = document.getElementById("mapLayout")
+CANVAS.setAttribute('height', `${DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin}px`)
 CANVAS.setAttribute('width', `1000px`)
 var ctx = CANVAS.getContext("2d")
 // included in html
@@ -153,3 +162,32 @@ drawAxisLables()
 drawPlotLines()
 // draw the rest of the chart
 drawEtcChart()
+
+
+// selector moves around the map only xAxis
+let innerLeftOffset = 0
+let lastClientX = MAPSEL.getBoundingClientRect().x
+MAPSEL.addEventListener('mousedown', mouseDown, false)
+window.addEventListener('mouseup', mouseUp, false)
+
+function mouseUp(e) {
+	let canvasFullWidth = DEFAULTS.rowWidth*theAxes.data.length
+	const SELECTOR = MAPSEL.getBoundingClientRect()
+	// render after mouseup (well, at least here the optimization was delivered)
+	// ctx.clearRect(0, 0, CANVAS.width, CANVAS.height)
+	ctx.clearRect(0, 0, canvasFullWidth, CANVAS.height)
+	ctx.translate( -(SELECTOR.x - lastClientX) * ( (canvasFullWidth - CANVAS.width) / (400 - SELECTOR.width) ), 0)
+	lastClientX = SELECTOR.x
+	drawEtcChart()
+	window.removeEventListener('mousemove', move, true)
+}
+function mouseDown(e) {
+	innerLeftOffset = MAPSEL.offsetLeft - e.clientX
+	window.addEventListener('mousemove', move, true)
+}
+function move(e) {
+	const SELECTOR = MAPSEL.getBoundingClientRect()
+	const LAYOUT = MAPLAY.getBoundingClientRect()
+	let offsetByParent = e.clientX + innerLeftOffset
+	if(offsetByParent>=0&&offsetByParent<=(LAYOUT.width-SELECTOR.width)) MAPSEL.style.left = e.clientX + innerLeftOffset + 'px'
+}

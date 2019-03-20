@@ -2,3 +2,22 @@
 .toggle-line {
 	border: 1px solid #cfcfcf
 }
+#miniMap {
+	position: relative; 
+	height: 50px;
+	padding-right: 0px;
+	padding-left: 0px;
+	margin-right: 15px;
+	margin-left: 15px;
+}
+#mapSelector {
+	position: absolute;
+	background-color: #ccc;
+	width: 100px;
+	height: 50px;
+	z-index: 1;
+}
+#mapLayout {
+	position: absolute;
+	border:1px solid #000000;
+}
