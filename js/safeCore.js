@@ -1,13 +1,27 @@
 /*
-  * SafeCharts v0.0.1
+  * SafeCharts
    * Copyright 2019 The AICC inc.
     * Very speed, efficiency and the size of the app.
      * * * * * * * * * * * * * * * * * * * * * * * * */
 
 "use strict"
 
-const generalConst = 'bazat'
+// project pride
+var rev =(y)=> (CANVAS.height-y*DEFAULTS.scale)
+var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(new Date(t)).getMonth()]+' '+(new Date(t)).getDate()
+
+
+// included in html
+bigdata = bigdata[0]
+console.log(bigdata)
+var xAxisLabels = bigdata.columns[0].slice(1)
+var yAxisData = bigdata.columns[1].slice(1)
+// console.log(yAxisData)
+
+
+// const generalConst = 'bazat'
 const DEFAULTS = {
+	scale: 0.0001,	// canvas scale does not work correctly((9
 	xAxis: {
 		offset: 30,
 		padding: 10,
@@ -25,7 +39,7 @@ const DEFAULTS = {
 
 var drawAxisLables = function() {
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = 6 // calc
+	let colCount = xAxisLabels.length
 	let rowHeight = DEFAULTS.rowHeight
 	ctx.font = "1em Candara"
 	ctx.fillStyle = '#ADADADAD'
@@ -43,8 +57,8 @@ var drawAxisLables = function() {
 	ctx.translate(DEFAULTS.xAxis.offset, DEFAULTS.yAxis.offset)
 	ctx.beginPath()
 	// xAxis labels (dynamic)
-	for (var i = 1; i <= colCount; i++) {
-		ctx.fillText(`Mar ${i}`, rowHeight * i, CANVAS.height - DEFAULTS.xAxis.padding)
+	for (var i = 0; i < colCount; i++) {
+		ctx.fillText(t2d(xAxisLabels[i]), rowHeight * i, CANVAS.height - DEFAULTS.xAxis.padding)
 	}
 	ctx.stroke()
 	
@@ -53,21 +67,21 @@ var drawAxisLables = function() {
 
 var drawPlotLines = function() {
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = 6 // calc
+	let colCount = xAxisLabels.length
 	let rowHeight = DEFAULTS.rowHeight
 	ctx.lineWidth = 0.5
 	ctx.strokeStyle = '#CFCFCFCF'
 	ctx.beginPath()
-	// xAxis labels
-	for (var i = 0; i < colCount; i++) {
+	// yAxis lines
+	for (var i = 0; i < rowCount; i++) {
 		ctx.moveTo(0, CANVAS.height - rowHeight * i)								// 1
-		ctx.lineTo(CANVAS.height, CANVAS.height - rowHeight * i)		// 2
+		ctx.lineTo(CANVAS.width, CANVAS.height - rowHeight * i)			// 2
 	}
 	ctx.stroke()
 	ctx.beginPath()
 	ctx.strokeStyle = '#E9E9E9E9'
-	// yAxis labels
-	for (var i = 0; i <= rowCount; i++) {
+	// xAxis lines
+	for (var i = 0; i < colCount; i++) {
 		// because need to think like the bottom left origin
 		ctx.moveTo(rowHeight * i, CANVAS.height)										// 2
 		ctx.lineTo(rowHeight * i, 0)																// 1
@@ -80,18 +94,10 @@ var drawTempChart = function() {
 	ctx.strokeStyle = '#C99898'
 	ctx.lineJoin = DEFAULTS.lineJoin
 	ctx.beginPath()
-	ctx.moveTo(0, 	rev(80))
-	ctx.lineTo(60, 	rev(340))
-	ctx.lineTo(120, rev(210))
-	ctx.lineTo(180, rev(290))
-	ctx.lineTo(240, rev(200))
-	ctx.lineTo(300, rev(40))
-	ctx.lineTo(360, rev(260))
-	ctx.lineTo(400, rev(190))
+	yAxisData.forEach((dot,i) => (!i)?ctx.moveTo(CANVAS.width*i/yAxisData.length, rev(dot)):ctx.lineTo(CANVAS.width*i/yAxisData.length, rev(dot)));
 	ctx.stroke()
 }
 
-var rev =(y)=> CANVAS.height-y
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -99,9 +105,6 @@ const CANVAS = document.getElementById("safeChart")
 CANVAS.setAttribute('height', `${DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.offset}px`)
 CANVAS.setAttribute('width', `500px`)
 var ctx = CANVAS.getContext("2d")
-// included in html
-// bigdata = bigdata[0]
-// console.log(bigdata)
 
 
 // draw some labels
@@ -110,17 +113,3 @@ drawAxisLables()
 drawPlotLines()
 // draw the rest of the chart
 drawTempChart()
-
-// function timeConverter(UNIX_timestamp){
-//   var a = new Date(UNIX_timestamp * 1000);
-//   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-//   var year = a.getFullYear();
-//   var month = months[a.getMonth()];
-//   var date = a.getDate();
-//   var hour = a.getHours();
-//   var min = a.getMinutes();
-//   var sec = a.getSeconds();
-//   var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-//   return time;
-// }
-// console.log(timeConverter(0));
