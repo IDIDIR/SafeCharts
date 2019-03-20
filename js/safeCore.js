@@ -1,7 +1,7 @@
 /*
   * SafeCharts
    * Copyright 2019 The AICC inc.
-    * Very speed, efficiency and the size of the app.
+    * Very speed, efficiency and the size of the app
      * * * * * * * * * * * * * * * * * * * * * * * * */
 
 "use strict"
@@ -10,39 +10,61 @@
 var rev =(y)=> (CANVAS.height-y*DEFAULTS.scale)
 var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(new Date(t)).getMonth()]+' '+(new Date(t)).getDate()
 
+var theLines = Array()
+var theAxes = Object()
+class Line {
+  constructor(line) {
+    this.name  = line.name
+    this.color = line.color
+    this.data  = line.data
+  }
+}
 
-// included in html
-bigdata = bigdata[0]
-console.log(bigdata)
-var xAxisLabels = bigdata.columns[0].slice(1)
-var yAxisData = bigdata.columns[1].slice(1)
-// console.log(yAxisData)
-
-
-// const generalConst = 'bazat'
 const DEFAULTS = {
 	scale: 0.0001,	// canvas scale does not work correctly((9
 	xAxis: {
 		offset: 30,
 		padding: 10,
 		// lines: dynamic
+		color: '#CFCFCFCF',
 	},
 	yAxis: {
 		offset: 30,
 		padding: 0,
 		labels: 6,
 		lines: 6,
+		color: '#ADADADAD',
 	},
 	lineJoin: 'round',
-	rowHeight: 60
+	rowHeight: 60,
+	rowWidth: 60,	// dynamic
 }
 
-var drawAxisLables = function() {
+var parseBadStruct = function() {
+	let keys = Array()
+	// bazat is a connecting link in any incomprehensible situation
+	bigdata.columns.map((bazat)=>keys.push(bazat[0]))
+	keys.forEach((key,i)=>{
+		if(bigdata.types[key]=="line"){
+			let line = Object()
+			line.name  = bigdata.names[key]
+			line.color = bigdata.colors[key]
+			line.data  = bigdata.columns[i].slice(1)
+			theLines[key] = new Line(line)
+		} else {
+			theAxes.data = bigdata.columns[i].slice(1)
+			console.log(`${theAxes.data.length} days`)
+		}
+	})
+}
+
+var drawAxisLables = function() {	
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = xAxisLabels.length
+	let colCount = theAxes.data.length
 	let rowHeight = DEFAULTS.rowHeight
+	let rowWidth  = DEFAULTS.rowWidth
 	ctx.font = "1em Candara"
-	ctx.fillStyle = '#ADADADAD'
+	ctx.fillStyle = DEFAULTS.yAxis.color
 
 	ctx.textAlign = 'left'
 	ctx.translate(0, -DEFAULTS.yAxis.offset)
@@ -58,7 +80,7 @@ var drawAxisLables = function() {
 	ctx.beginPath()
 	// xAxis labels (dynamic)
 	for (var i = 0; i < colCount; i++) {
-		ctx.fillText(t2d(xAxisLabels[i]), rowHeight * i, CANVAS.height - DEFAULTS.xAxis.padding)
+		ctx.fillText(t2d(theAxes.data[i]), rowWidth * i, CANVAS.height - DEFAULTS.xAxis.padding)
 	}
 	ctx.stroke()
 	
@@ -67,10 +89,11 @@ var drawAxisLables = function() {
 
 var drawPlotLines = function() {
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = xAxisLabels.length
+	let colCount = theAxes.data.length
 	let rowHeight = DEFAULTS.rowHeight
+	let rowWidth  = DEFAULTS.rowWidth
 	ctx.lineWidth = 0.5
-	ctx.strokeStyle = '#CFCFCFCF'
+	ctx.strokeStyle = DEFAULTS.xAxis.color
 	ctx.beginPath()
 	// yAxis lines
 	for (var i = 0; i < rowCount; i++) {
@@ -83,19 +106,31 @@ var drawPlotLines = function() {
 	// xAxis lines
 	for (var i = 0; i < colCount; i++) {
 		// because need to think like the bottom left origin
-		ctx.moveTo(rowHeight * i, CANVAS.height)										// 2
-		ctx.lineTo(rowHeight * i, 0)																// 1
+		ctx.moveTo(rowWidth * i, CANVAS.height)										// 2
+		ctx.lineTo(rowWidth * i, 0)																// 1
 	}
 	ctx.stroke()
 }
 
-var drawTempChart = function() {
+var drawEtcChart = function() {
 	ctx.lineWidth = 2.5
-	ctx.strokeStyle = '#C99898'
 	ctx.lineJoin = DEFAULTS.lineJoin
-	ctx.beginPath()
-	yAxisData.forEach((dot,i) => (!i)?ctx.moveTo(CANVAS.width*i/yAxisData.length, rev(dot)):ctx.lineTo(CANVAS.width*i/yAxisData.length, rev(dot)));
-	ctx.stroke()
+	Object.entries(theLines).forEach(([key,line]) => {
+		
+		ctx.strokeStyle = line.color
+		ctx.beginPath()
+		line.data.forEach((dot,i) => {
+			(!i)?ctx.moveTo(DEFAULTS.rowWidth*i, rev(dot)):ctx.lineTo(DEFAULTS.rowWidth*i, rev(dot));
+		})
+		ctx.stroke()
+
+		line.data.forEach((dot,i) => {
+			ctx.beginPath()
+			ctx.arc(DEFAULTS.rowWidth*i, rev(dot), 5, 0, 2 * Math.PI)
+			ctx.stroke()
+		})
+
+	})
 }
 
 
@@ -103,13 +138,18 @@ var drawTempChart = function() {
 
 const CANVAS = document.getElementById("safeChart")
 CANVAS.setAttribute('height', `${DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.offset}px`)
-CANVAS.setAttribute('width', `500px`)
+CANVAS.setAttribute('width', `1000px`)
 var ctx = CANVAS.getContext("2d")
+// included in html
+bigdata = bigdata[0]
+console.log(bigdata)
 
 
+// here it is necessary to keep silent
+parseBadStruct()
 // draw some labels
 drawAxisLables()
 // draw some lines
 drawPlotLines()
 // draw the rest of the chart
-drawTempChart()
+drawEtcChart()
