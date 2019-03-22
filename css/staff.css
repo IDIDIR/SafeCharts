@@ -4,7 +4,8 @@
 }
 #miniMap {
 	position: relative; 
-	height: 50px;
+	height: 60px;
+	width: 400px;
 	padding-right: 0px;
 	padding-left: 0px;
 	margin-right: 15px;
@@ -12,12 +13,14 @@
 }
 #mapSelector {
 	position: absolute;
-	background-color: #ccc;
+	/* yeah baby, it seems that it looks like a customer’s layout*/
+	background-color: #ffffff90;
+	border: 2px solid rgb(143, 159, 175);
 	width: 100px;
-	height: 50px;
+	height: 60px;
 	z-index: 1;
 }
 #mapLayout {
 	position: absolute;
-	border:1px solid #000000;
+	opacity: 0.5;
 }
