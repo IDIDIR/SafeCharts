@@ -7,13 +7,15 @@
 "use strict"
 
 // project pride
-var rev =(y)=> (CANVAS.height+DEFAULTS.xAxis.margin-y*DEFAULTS.scale*(CANVAS.height/(DEFAULTS.yAxis.max*DEFAULTS.scale)))
+var rev =(y)=> (CANVAS.height-y*DEFAULTS.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.max*DEFAULTS.scale)))
 var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(new Date(t)).getMonth()]+' '+(new Date(t)).getDate()
 
-var CANVAS,MAPSEL,MAPLAY
+var CANVAS,MAPSEL,MAPLAY,SWTCHS
 var ctx,mtx
+var lastClientX
 
-var theLines = Array()
+var allLines = Array()
+var showLines = Array()
 var theAxes = Object()
 class Line {
   constructor(line) {
@@ -61,27 +63,59 @@ var parseBadStruct = function() {
 			line.name  = bigdata.names[key]
 			line.color = bigdata.colors[key]
 			line.data  = bigdata.columns[i].slice(1)
-			theLines[key] = new Line(line)
+			allLines[key] = new Line(line)
+			showLines[key] = new Line(line)
 		} else {
 			theAxes.data = bigdata.columns[i].slice(1)
 			console.log(`${theAxes.data.length} days`)
 		}
 	})
+	// wow, "showLines=allLines" is not copy, is link o.O
+	// showLines = Array.from(allLines)
 }
 
 var initSelectors = function() {
 	CANVAS = document.getElementById("safeChart")
 	MAPSEL = document.getElementById("mapSelector")
 	MAPLAY = document.getElementById("mapLayout")
+	SWTCHS = document.getElementById("chartSwitches")
 	CANVAS.setAttribute('height', `${DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin}px`)
 	CANVAS.setAttribute('width', `1000px`)
 	MAPSEL.style.width = `${DEFAULTS.rowWidth * theAxes.data.length / CANVAS.width}px`
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
+	let chartSwitches = ""
+	Object.entries(showLines).forEach(([key,line]) => {
+		// fa-square-o fa-check-square
+		chartSwitches +=
+			`
+			<button id="${key}" onclick="switchHandler(this)" type="button" class="btn btn-default waves-effect waves-light toggle-line">
+				<span><i class="fa fa-check-square" style="color:${line.color}"></i></span>
+				<span class="line-name">${line.name}</span>
+			</button>
+			`
+	})
+	SWTCHS.innerHTML = chartSwitches
+}
+
+var switchHandler = function(button) {
+	let id = button.id
+	if (Object.keys(showLines).includes(id)) {
+		delete showLines[id]
+		button.querySelector(`span>i`).classList.remove('fa-check-square')
+		button.querySelector(`span>i`).classList.add('fa-square-o')
+	} else {
+		showLines[id] = allLines[id]
+		button.querySelector(`span>i`).classList.remove('fa-square-o')
+		button.querySelector(`span>i`).classList.add('fa-check-square')
+	}
+	redrawChartLines()	
+	redrawMapLines()
 }
 
 var drawAxisLables = function() {
-	Object.entries(theLines).forEach(([key, line])=>{
+	DEFAULTS.yAxis.max = 0
+	Object.entries(showLines).forEach(([key, line])=>{
 		// so that the schedule does not go beyond the workspace
 		const additionalPadding = 10/DEFAULTS.scale
 		let maxValue = Math.max(...line.data)
@@ -89,7 +123,6 @@ var drawAxisLables = function() {
 			// find a close multiple of ten after multiplying by scale
 			DEFAULTS.yAxis.max=Math.ceil(maxValue)+additionalPadding
 		}
-		// console.log(DEFAULTS.yAxis.max)
 	})
 
 	let rowCount = DEFAULTS.yAxis.labels
@@ -152,12 +185,12 @@ var drawPlotLines = function() {
 var drawChartLines = function() {
 	ctx.lineWidth = 2.5
 	ctx.lineJoin = DEFAULTS.lineJoin
-	Object.entries(theLines).forEach(([key,line]) => {
+	Object.entries(showLines).forEach(([key,line]) => {
 		
 		ctx.strokeStyle = line.color
 		ctx.beginPath()
 		line.data.forEach((dot,i) => {
-			(!i)?ctx.moveTo(DEFAULTS.rowWidth*i, rev(dot)):ctx.lineTo(DEFAULTS.rowWidth*i, rev(dot));
+			ctx.lineTo(DEFAULTS.rowWidth*i, rev(dot));
 		})
 		ctx.stroke()
 
@@ -173,25 +206,33 @@ var drawChartLines = function() {
 	})
 }
 
+var redrawChartLines = function() {	
+	let canvasFullWidth = DEFAULTS.rowWidth*theAxes.data.length
+	const SELECTOR = MAPSEL.getBoundingClientRect()
+	// render after mouseup (well, at least here the optimization was delivered)
+	ctx.translate( -(SELECTOR.x - lastClientX) * ( (canvasFullWidth - CANVAS.width) / (400 - SELECTOR.width) ), DEFAULTS.yAxis.margin)
+	// ctx.clearRect(0, 0, CANVAS.width, CANVAS.height)
+	ctx.clearRect(0, 0, canvasFullWidth, CANVAS.height)
+	lastClientX = SELECTOR.x
+	drawAxisLables()
+	drawPlotLines()
+	drawChartLines()
+}
+var redrawMapLines = function() {	
+	mtx.clearRect(0, 0, MAPLAY.width, MAPLAY.height)
+	drawMapLines()
+}
+
 var pluginScrolling = function() {
 
 	// selector moves around the map only xAxis
 	let innerLeftOffset = 0
-	let lastClientX = MAPSEL.getBoundingClientRect().x
+	lastClientX = MAPSEL.getBoundingClientRect().x
 	MAPSEL.addEventListener('mousedown', mouseDown, false)
 	window.addEventListener('mouseup', mouseUp, false)
 	
 	function mouseUp(e) {
-		let canvasFullWidth = DEFAULTS.rowWidth*theAxes.data.length
-		const SELECTOR = MAPSEL.getBoundingClientRect()
-		// render after mouseup (well, at least here the optimization was delivered)
-		ctx.translate( -(SELECTOR.x - lastClientX) * ( (canvasFullWidth - CANVAS.width) / (400 - SELECTOR.width) ), DEFAULTS.yAxis.margin)
-		// ctx.clearRect(0, 0, CANVAS.width, CANVAS.height)
-		ctx.clearRect(0, 0, canvasFullWidth, CANVAS.height)
-		lastClientX = SELECTOR.x
-		drawAxisLables()
-		drawPlotLines()
-		drawChartLines()
+		redrawChartLines()
 		window.removeEventListener('mousemove', move, true)
 	}
 	function mouseDown(e) {
@@ -209,14 +250,14 @@ var pluginScrolling = function() {
 var drawMapLines = function() {
 	mtx.lineWidth = 1.5
 	mtx.lineJoin = DEFAULTS.lineJoin
-	Object.entries(theLines).forEach(([key,line]) => {
+	Object.entries(showLines).forEach(([key,line]) => {
 		
 		mtx.strokeStyle = line.color
 		mtx.beginPath()
 		line.data.forEach((dot,i) => {
 			let y = MAPLAY.height-dot*DEFAULTS.scale*(MAPLAY.height/(DEFAULTS.yAxis.max*DEFAULTS.scale));
 			let rowWidth = MAPLAY.width/theAxes.data.length;
-			(!i)?mtx.moveTo(rowWidth*i, y):mtx.lineTo(rowWidth*i, y);
+			mtx.lineTo(rowWidth*i, y);
 		})
 		mtx.stroke()
 		mtx.fillStyle = 'rgba(137, 162, 165, 0.05)'
