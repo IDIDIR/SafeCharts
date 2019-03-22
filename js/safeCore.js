@@ -7,7 +7,7 @@
 "use strict"
 
 // project pride
-var rev =(y)=> (CANVAS.height-y*DEFAULTS.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.max*DEFAULTS.scale)))
+var yrv =(y)=> CANVAS.height-y*DEFAULTS.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.max*DEFAULTS.scale))
 var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(new Date(t)).getMonth()]+' '+(new Date(t)).getDate()
 var w2n =(w)=> w.replace('px','')
 var n2w =(n)=> n+'px'
@@ -15,15 +15,17 @@ var n2w =(n)=> n+'px'
 // elements
 var CANVAS,MAPSEL,MAPLAY,SWTCHS,LEFTMS,RGHTMS
 var ctx,mtx
-// structures (allLines & theAxes need a all-time sync)
+// structures (allLines & allDates need a all-time sync)
 var allLines = Array()
+var allDates = Array()
 var showLines = Array()
-var theAxes = Object()
+var showDates = Array()
 class Line {
   constructor(line) {
     this.name  = line.name
     this.color = line.color
-    this.data  = line.data
+    this.y  	 = line.y
+    this.x  	 = line.x
   }
 }
 // etc
@@ -35,6 +37,7 @@ const DEFAULTS = {
 	rowHeight: 60,
 	rowWidth: 60,	// dynamic
 	xAxis: {
+		scale: 0.000000011574074074074, // 1day = 86400000
 		// offset: 0,	// dynamic
 		margin: 30,
 		padding: 10,
@@ -66,14 +69,17 @@ var parseBadStruct = function() {
 			let line = Object()
 			line.name  = bigdata.names[key]
 			line.color = bigdata.colors[key]
-			line.data  = bigdata.columns[i].slice(1)
+			line.y  	 = bigdata.columns[i].slice(1)
+			line.x  	 = showDates
 			allLines[key] = new Line(line)
 			showLines[key] = new Line(line)
 		} else {
-			theAxes.data = bigdata.columns[i].slice(1)
-			console.log(`${theAxes.data.length} days`)
+			allDates = bigdata.columns[i].slice(1)
+			showDates = bigdata.columns[i].slice(1)
+			console.log(`${allDates.length} days`)
 		}
 	})
+	console.log(allLines)
 	// wow, "showLines=allLines" is not copy, is link o.O
 	// showLines = Array.from(allLines)
 }
@@ -87,7 +93,7 @@ var initSelectors = function() {
 	RGHTMS = document.getElementById("rightSide")
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
 	CANVAS.setAttribute('width', n2w(1000))
-	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * theAxes.data.length / CANVAS.width)
+	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * showDates.length / CANVAS.width)
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
 	let chartSwitches = ""
@@ -124,7 +130,7 @@ var drawAxisLables = function() {
 	Object.entries(showLines).forEach(([key, line])=>{
 		// so that the schedule does not go beyond the workspace
 		const additionalPadding = 10/DEFAULTS.scale
-		let maxValue = Math.max(...line.data)
+		let maxValue = Math.max(...line.y) // need diapason
 		if(maxValue>DEFAULTS.yAxis.max) {
 			// find a close multiple of ten after multiplying by scale
 			DEFAULTS.yAxis.max=Math.ceil(maxValue)+additionalPadding
@@ -132,7 +138,7 @@ var drawAxisLables = function() {
 	})
 
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = theAxes.data.length
+	let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
 	let rowWidth  = DEFAULTS.rowWidth
 	ctx.font = "1em Candara"
@@ -154,7 +160,7 @@ var drawAxisLables = function() {
 	ctx.beginPath()
 	// xAxis labels (dynamic)
 	for (var i = 0; i < colCount; i++) {
-		ctx.fillText(t2d(theAxes.data[i]), rowWidth*i, CANVAS.height - DEFAULTS.xAxis.padding)
+		ctx.fillText(t2d(showDates[i]), rowWidth*i, CANVAS.height - DEFAULTS.xAxis.padding)
 	}
 	ctx.stroke()
 	
@@ -162,9 +168,9 @@ var drawAxisLables = function() {
 }
 
 var drawPlotLines = function() {
-	let canvasFullWidth = DEFAULTS.rowWidth*theAxes.data.length	// del
+	let canvasFullWidth = DEFAULTS.rowWidth*showDates.length	// del
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = theAxes.data.length
+	let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
 	let rowWidth  = DEFAULTS.rowWidth
 	ctx.lineWidth = 0.5
@@ -191,20 +197,21 @@ var drawPlotLines = function() {
 var drawChartLines = function() {
 	ctx.lineWidth = 2.5
 	ctx.lineJoin = DEFAULTS.lineJoin
+	let rowWidth  = DEFAULTS.rowWidth
 	Object.entries(showLines).forEach(([key,line]) => {
 		
 		ctx.strokeStyle = line.color
 		ctx.beginPath()
-		line.data.forEach((dot,i) => {
-			ctx.lineTo(DEFAULTS.rowWidth*i, rev(dot));
+		line.y.forEach((dot,i) => {
+			ctx.lineTo(rowWidth*i, yrv(dot));
 		})
 		ctx.stroke()
 
-		line.data.forEach((dot,i) => {
+		line.y.forEach((dot,i) => {
 			if(i) {
 				ctx.beginPath()
-				ctx.arc(DEFAULTS.rowWidth*i, rev(dot), 5, 0, 2 * Math.PI)
-				ctx.clearRect(DEFAULTS.rowWidth*i-5,rev(dot)-5,5*2,5*2);
+				ctx.arc(rowWidth*i, yrv(dot), 5, 0, 2 * Math.PI)
+				ctx.clearRect(rowWidth*i-5,yrv(dot)-5,5*2,5*2);
 				ctx.stroke()
 			}
 		})
@@ -212,7 +219,7 @@ var drawChartLines = function() {
 	})
 }
 var redrawChartLines = function() {	
-	let canvasFullWidth = DEFAULTS.rowWidth*theAxes.data.length
+	let canvasFullWidth = DEFAULTS.rowWidth*showDates.length
 	const SELECTOR = MAPSEL.getBoundingClientRect()
 	// render after mouseup (well, at least here the optimization was delivered)
 	ctx.translate( -(SELECTOR.x - lastClientX) * ( (canvasFullWidth - CANVAS.width) / (400 - SELECTOR.width) ), DEFAULTS.yAxis.margin)
@@ -257,9 +264,9 @@ var drawMapLines = function() {
 		
 		mtx.strokeStyle = line.color
 		mtx.beginPath()
-		line.data.forEach((dot,i) => {
+		line.y.forEach((dot,i) => {
 			let y = MAPLAY.height-dot*DEFAULTS.scale*(MAPLAY.height/(DEFAULTS.yAxis.max*DEFAULTS.scale));
-			let rowWidth = MAPLAY.width/theAxes.data.length;
+			let rowWidth = MAPLAY.width/showDates.length;
 			mtx.lineTo(rowWidth*i, y);
 		})
 		mtx.stroke()
@@ -280,9 +287,9 @@ var drawMapSelector = function() {
 		
 	// 	mtx.strokeStyle = line.color
 	// 	mtx.beginPath()
-	// 	line.data.forEach((dot,i) => {
+	// 	line.y.forEach((dot,i) => {
 	// 		let y = MAPLAY.height-dot*DEFAULTS.scale*(MAPLAY.height/(DEFAULTS.yAxis.max*DEFAULTS.scale));
-	// 		let rowWidth = MAPLAY.width/theAxes.data.length;
+	// 		let rowWidth = MAPLAY.width/showDates.length;
 	// 		mtx.lineTo(rowWidth*i, y);
 	// 	})
 	// 	mtx.stroke()
