@@ -9,11 +9,13 @@
 // project pride
 var rev =(y)=> (CANVAS.height-y*DEFAULTS.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.max*DEFAULTS.scale)))
 var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(new Date(t)).getMonth()]+' '+(new Date(t)).getDate()
+var w2n =(w)=> w.replace('px','')
+var n2w =(n)=> n+'px'
 
-var CANVAS,MAPSEL,MAPLAY,SWTCHS
+// elements
+var CANVAS,MAPSEL,MAPLAY,SWTCHS,LEFTMS,RGHTMS
 var ctx,mtx
-var lastClientX
-
+// structures (allLines & theAxes need a all-time sync)
 var allLines = Array()
 var showLines = Array()
 var theAxes = Object()
@@ -24,6 +26,8 @@ class Line {
     this.data  = line.data
   }
 }
+// etc
+var lastClientX
 
 const DEFAULTS = {
 	scale: 0.0001,	// canvas scale does not work correctly((9
@@ -79,9 +83,11 @@ var initSelectors = function() {
 	MAPSEL = document.getElementById("mapSelector")
 	MAPLAY = document.getElementById("mapLayout")
 	SWTCHS = document.getElementById("chartSwitches")
-	CANVAS.setAttribute('height', `${DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin}px`)
-	CANVAS.setAttribute('width', `1000px`)
-	MAPSEL.style.width = `${DEFAULTS.rowWidth * theAxes.data.length / CANVAS.width}px`
+	LEFTMS = document.getElementById("leftSide")
+	RGHTMS = document.getElementById("rightSide")
+	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
+	CANVAS.setAttribute('width', n2w(1000))
+	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * theAxes.data.length / CANVAS.width)
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
 	let chartSwitches = ""
@@ -148,7 +154,7 @@ var drawAxisLables = function() {
 	ctx.beginPath()
 	// xAxis labels (dynamic)
 	for (var i = 0; i < colCount; i++) {
-		ctx.fillText(t2d(theAxes.data[i]), rowWidth * i, CANVAS.height - DEFAULTS.xAxis.padding)
+		ctx.fillText(t2d(theAxes.data[i]), rowWidth*i, CANVAS.height - DEFAULTS.xAxis.padding)
 	}
 	ctx.stroke()
 	
@@ -176,8 +182,8 @@ var drawPlotLines = function() {
 	// xAxis lines
 	for (var i = 0; i < colCount; i++) {
 		// because need to think like the bottom left origin
-		ctx.moveTo(rowWidth * i, CANVAS.height)										// 2
-		ctx.lineTo(rowWidth * i, 0)																// 1
+		ctx.moveTo(rowWidth*i, CANVAS.height)										// 2
+		ctx.lineTo(rowWidth*i, 0)																// 1
 	}
 	ctx.stroke()
 }
@@ -205,7 +211,6 @@ var drawChartLines = function() {
 
 	})
 }
-
 var redrawChartLines = function() {	
 	let canvasFullWidth = DEFAULTS.rowWidth*theAxes.data.length
 	const SELECTOR = MAPSEL.getBoundingClientRect()
@@ -217,10 +222,6 @@ var redrawChartLines = function() {
 	drawAxisLables()
 	drawPlotLines()
 	drawChartLines()
-}
-var redrawMapLines = function() {	
-	mtx.clearRect(0, 0, MAPLAY.width, MAPLAY.height)
-	drawMapLines()
 }
 
 var pluginScrolling = function() {
@@ -243,7 +244,9 @@ var pluginScrolling = function() {
 		const SELECTOR = MAPSEL.getBoundingClientRect()
 		const LAYOUT = MAPLAY.getBoundingClientRect()
 		let offsetByParent = e.clientX + innerLeftOffset
-		if(offsetByParent>=0&&offsetByParent<=(LAYOUT.width-SELECTOR.width)) MAPSEL.style.left = e.clientX + innerLeftOffset + 'px'
+		if(offsetByParent>=0&&offsetByParent<=(LAYOUT.width-SELECTOR.width)) {
+			MAPSEL.style.left = n2w(e.clientX + innerLeftOffset)
+		}
 	}
 }
 
@@ -264,6 +267,29 @@ var drawMapLines = function() {
 		mtx.fillRect(0, 0, 400, 60);
 
 	})
+}
+var redrawMapLines = function() {	
+	mtx.clearRect(0, 0, MAPLAY.width, MAPLAY.height)
+	drawMapLines()
+}
+
+var drawMapSelector = function() {
+	// mtx.lineWidth = 1.5
+	// mtx.lineJoin = DEFAULTS.lineJoin
+	// Object.entries(showLines).forEach(([key,line]) => {
+		
+	// 	mtx.strokeStyle = line.color
+	// 	mtx.beginPath()
+	// 	line.data.forEach((dot,i) => {
+	// 		let y = MAPLAY.height-dot*DEFAULTS.scale*(MAPLAY.height/(DEFAULTS.yAxis.max*DEFAULTS.scale));
+	// 		let rowWidth = MAPLAY.width/theAxes.data.length;
+	// 		mtx.lineTo(rowWidth*i, y);
+	// 	})
+	// 	mtx.stroke()
+	// 	mtx.fillStyle = 'rgba(137, 162, 165, 0.05)'
+	// 	mtx.fillRect(0, 0, 400, 60);
+
+	// })
 }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
