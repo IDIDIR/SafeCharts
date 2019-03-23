@@ -13,9 +13,9 @@ var w2n =(w)=> w.replace('px','')
 var n2w =(n)=> n+'px'
 
 // elements
-var CANVAS,MAPSEL,MAPLAY,SWTCHS,LEFTMS,RGHTMS
+var CANVAS,MAPSEL,MAPLAY,SWTCHS
 var ctx,mtx
-// structures (allLines & allDates need a all-time sync)
+// structures
 var allLines = Array()
 var allDates = Array()
 var showLines = Array()
@@ -31,23 +31,22 @@ class Line {
 }
 // etc
 var lastClientX
+var lastSelectorWidth
+var mapselMode		// scroll or lscale/rscale
 
 const DEFAULTS = {
 	lineJoin: 'round',
 	rowHeight: 60,
-	rowWidth: 60,	// dynamic
+	rowWidth: 60,		// dynamic
 	xAxis: {
 		scale: 1,
-		// offset: 0,	// dynamic
 		margin: 30,
 		padding: 10,
-		// lines: dynamic,
 		color: '#CFCFCFCF',
 		step: 1,
 	},
 	yAxis: {
 		scale: 0.0001,	// canvas scale does not work correctly((9
-		// offset: 0,	// dynamic
 		margin: 30,
 		padding: 10,
 		labels: 6,
@@ -57,6 +56,11 @@ const DEFAULTS = {
 		showedmax: 0,
 		globalmax: 0,
 	},
+	mapSelector: {
+		border: 5,			// left&right for resize
+		minWidth: 0,
+		leftOffset: 0,
+	}
 }
 
 var parseBadStruct = function() {
@@ -90,11 +94,11 @@ var initSelectors = function() {
 	MAPSEL = document.getElementById("mapSelector")
 	MAPLAY = document.getElementById("mapLayout")
 	SWTCHS = document.getElementById("chartSwitches")
-	LEFTMS = document.getElementById("leftSide")
-	RGHTMS = document.getElementById("rightSide")
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
 	CANVAS.setAttribute('width', n2w(1000))
 	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * showDates.length / CANVAS.width)
+	DEFAULTS.mapSelector.leftOffset = MAPLAY.getBoundingClientRect().left
+	DEFAULTS.mapSelector.minWidth = DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * showDates.length / CANVAS.width
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
 	let chartSwitches = ""
@@ -173,7 +177,6 @@ var drawAxisLables = function() {
 }
 
 var drawPlotLines = function() {
-	let canvasFullWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale*showDates.length	// del
 	let rowCount = DEFAULTS.yAxis.labels
 	// let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
@@ -184,8 +187,7 @@ var drawPlotLines = function() {
 	// yAxis lines
 	for (var i = 0; i < rowCount; i++) {
 		ctx.moveTo(0, CANVAS.height - rowHeight * i)								// 1
-		// ctx.lineTo(CANVAS.width, CANVAS.height - rowHeight * i)			// 2
-		ctx.lineTo(canvasFullWidth, CANVAS.height - rowHeight * i)			// 2
+		ctx.lineTo(CANVAS.width, CANVAS.height - rowHeight * i)			// 2
 	}
 	ctx.stroke()
 	ctx.beginPath()
@@ -233,7 +235,6 @@ var redrawChartLines = function() {
 	showArea.from = parseInt(MAPSEL.offsetLeft*step)
 	showArea.to = parseInt((MAPSEL.offsetLeft+MAPSEL.getBoundingClientRect().width)*step)
 	DEFAULTS.xAxis.scale = (CANVAS.width/(showArea.to-showArea.from))/DEFAULTS.rowWidth
-	let canvasFullWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale*showDates.length
 	const SELECTOR = MAPSEL.getBoundingClientRect()
 	// render after mouseup (well, at least here the optimization was delivered)
 	ctx.translate(0, DEFAULTS.yAxis.margin)
@@ -244,7 +245,7 @@ var redrawChartLines = function() {
 	drawChartLines()
 }
 
-var pluginScrolling = function() {
+var plugininteractivity = function() {
 	let step = showDates.length/MAPLAY.getBoundingClientRect().width
 	// int required!!1
 	showArea.from = parseInt(MAPSEL.offsetLeft*step)
@@ -253,6 +254,8 @@ var pluginScrolling = function() {
 
 	// selector moves around the map only xAxis
 	let innerLeftOffset = 0
+	let middleLeftOffset = 0
+	let outerLeftOffset = 0
 	lastClientX = MAPSEL.getBoundingClientRect().x
 	MAPSEL.addEventListener('mousedown', mouseDown, false)
 	window.addEventListener('mouseup', mouseUp, false)
@@ -261,18 +264,50 @@ var pluginScrolling = function() {
 		redrawChartLines()
 		window.removeEventListener('mousemove', move, true)
 	}
-	function mouseDown(e) {
-		innerLeftOffset = MAPSEL.offsetLeft - e.clientX
+	function mouseDown(e) {		
+		let border = DEFAULTS.mapSelector.border
+		var SELECTOR = MAPSEL.getBoundingClientRect()
+		outerLeftOffset = DEFAULTS.mapSelector.leftOffset
+		middleLeftOffset = SELECTOR.left-outerLeftOffset
+		innerLeftOffset = e.clientX - SELECTOR.left
+		lastSelectorWidth = SELECTOR.width
+		let isBody = (e.clientX>(SELECTOR.x+border))&&(e.clientX<(SELECTOR.x+SELECTOR.width-border))
+		let isLeft = (e.clientX>=(SELECTOR.x))&&(e.clientX<=(SELECTOR.x+border))
+		let isRight = (e.clientX>=(SELECTOR.x+SELECTOR.width-border))&&(e.clientX<=(SELECTOR.x+SELECTOR.width))
+		if (false) bazat in miami
+		else if (isBody)
+			mapselMode='scroll'
+		else if (isLeft)
+			mapselMode='lscale'
+		else if (isRight)
+			mapselMode='rscale'
 		window.addEventListener('mousemove', move, true)
 	}
 	function move(e) {
 		const SELECTOR = MAPSEL.getBoundingClientRect()
 		const LAYOUT = MAPLAY.getBoundingClientRect()
-		let offsetByParent = e.clientX + innerLeftOffset
-		if(offsetByParent>=0&&offsetByParent<=(LAYOUT.width-SELECTOR.width)) {
-			MAPSEL.style.left = n2w(e.clientX + innerLeftOffset)
+		let dynamicOffset = e.clientX-outerLeftOffset-innerLeftOffset
+		if (mapselMode=='lscale') {
+			dynamicOffset = e.clientX - outerLeftOffset
+			let currentWidth = middleLeftOffset - dynamicOffset + lastSelectorWidth
+			if(dynamicOffset>=0) { // to middleLeftOffset + DEFAULTS.mapSelector.minWidth
+				MAPSEL.style.left = n2w(dynamicOffset)
+				MAPSEL.style.width = n2w(currentWidth)
+			}
 		}
-		// resize??
+		if (mapselMode=='rscale') {
+			let currentWidth = e.clientX - outerLeftOffset - middleLeftOffset
+			// let temp = lastSelectorWidth + dynamicOffset
+			// if(temp<=LAYOUT.width) { // DEFAULTS.mapSelector.minWidth
+			if(dynamicOffset<=(LAYOUT.width-lastSelectorWidth)) { // from DEFAULTS.mapSelector.minWidth
+				MAPSEL.style.width = n2w(currentWidth)
+			}
+		}
+		if (mapselMode=='scroll') {
+			if(dynamicOffset>=0&&dynamicOffset<=(LAYOUT.width-SELECTOR.width)) {
+				MAPSEL.style.left = n2w(dynamicOffset)
+			}
+		}
 	}
 }
 
@@ -299,32 +334,12 @@ var redrawMapLines = function() {
 	drawMapLines()
 }
 
-var drawMapSelector = function() {
-	// mtx.lineWidth = 1.5
-	// mtx.lineJoin = DEFAULTS.lineJoin
-	// Object.entries(showLines).forEach(([key,line]) => {
-		
-	// 	mtx.strokeStyle = line.color
-	// 	mtx.beginPath()
-	// 	line.x.forEach((dot,i) => {
-	// 		let y = MAPLAY.height-line.y[i]*DEFAULTS.yAxis.scale*(MAPLAY.height/(DEFAULTS.yAxis.globalmax*DEFAULTS.yAxis.scale));
-	// 		let rowWidth = MAPLAY.width/showDates.length;
-	// 		mtx.lineTo(rowWidth*i, y);
-	// 	})
-	// 	mtx.stroke()
-	// 	mtx.fillStyle = 'rgba(137, 162, 165, 0.05)'
-	// 	mtx.fillRect(0, 0, 400, 60);
-
-	// })
-}
-
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 parseBadStruct()
 initSelectors()
 
-pluginScrolling()
-// pluginScaling()
+plugininteractivity()
 
 drawAxisLables()
 drawPlotLines()
