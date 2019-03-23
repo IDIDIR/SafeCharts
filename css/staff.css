@@ -15,7 +15,10 @@
 	position: absolute;
 	/* yeah baby, it seems that it looks like a customer’s layout */
 	background-color: #ffffff90;
-	border: 2px solid rgb(143, 159, 175);
+	border-top: 1px solid rgb(143, 159, 175);
+	border-bottom: 1px solid rgba(143, 159, 175);
+	border-left: 3px solid rgb(143, 159, 175, 0.5);
+	border-right: 3px solid rgb(143, 159, 175, 0.5);
 	width: 100px;
 	height: 60px;
 	z-index: 1;

@@ -42,6 +42,7 @@ const DEFAULTS = {
 		scale: 1,
 		margin: 30,
 		padding: 10,
+		labels: 6,
 		color: '#CFCFCFCF',
 		step: 1,
 	},
@@ -130,8 +131,6 @@ var switchHandler = function(button) {
 }
 
 var drawAxisLables = function() {
-	DEFAULTS.yAxis.showedmax = 0
-	DEFAULTS.yAxis.globalmax = 0
 	Object.entries(showLines).forEach(([key, line])=>{
 		// so that the schedule does not go beyond the workspace
 		const additionalPadding = DEFAULTS.yAxis.padding/DEFAULTS.yAxis.scale
@@ -158,7 +157,6 @@ var drawAxisLables = function() {
 	// yAxis labels (static)
 	for (var i = 0; i < rowCount; i++) {
 		ctx.fillText(parseInt(DEFAULTS.yAxis.showedmax * DEFAULTS.yAxis.scale / rowCount * i), 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
-		// ctx.fillText(rowHeight * i, 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
 	}
 	ctx.stroke()
 
@@ -166,9 +164,11 @@ var drawAxisLables = function() {
 	ctx.translate(0, DEFAULTS.yAxis.margin)
 	ctx.beginPath()
 	// xAxis labels (dynamic)
+	const visible = parseInt((showArea.to-showArea.from)/DEFAULTS.xAxis.labels)
 	let c = 0
 	for (var i = showArea.from; i < showArea.to; i++) {
-		ctx.fillText(t2d(showDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
+		// love $this <3
+		if(i&&!(i%visible)) ctx.fillText(t2d(showDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
 		c++
 	}
 	ctx.stroke()
@@ -221,7 +221,7 @@ var drawChartLines = function() {
 		let d = 0
 		for (var i = showArea.from; i < showArea.to; i++) {
 			ctx.beginPath()
-			ctx.arc(rowWidth*d, yrv(line.y[i]), 5, 0, 2 * Math.PI)
+			ctx.arc(rowWidth*d,yrv(line.y[i]),5,0,2*Math.PI)
 			ctx.clearRect(rowWidth*d-5,yrv(line.y[i])-5,5*2,5*2)
 			ctx.stroke()
 			d++
