@@ -6,8 +6,8 @@
 
 "use strict"
 
-// project pride
-var yrv =(y)=> CANVAS.height-y*DEFAULTS.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.max*DEFAULTS.scale))
+// demo of reducing the size of the application
+var yrv =(y)=> CANVAS.height-y*DEFAULTS.yAxis.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.showedmax*DEFAULTS.yAxis.scale))
 var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(new Date(t)).getMonth()]+' '+(new Date(t)).getDate()
 var w2n =(w)=> w.replace('px','')
 var n2w =(n)=> n+'px'
@@ -20,6 +20,7 @@ var allLines = Array()
 var allDates = Array()
 var showLines = Array()
 var showDates = Array()
+var showArea = {from:0,to:0}
 class Line {
   constructor(line) {
     this.name  = line.name
@@ -32,12 +33,11 @@ class Line {
 var lastClientX
 
 const DEFAULTS = {
-	scale: 0.0001,	// canvas scale does not work correctly((9
 	lineJoin: 'round',
 	rowHeight: 60,
 	rowWidth: 60,	// dynamic
 	xAxis: {
-		scale: 0.000000011574074074074, // 1day = 86400000
+		scale: 1,
 		// offset: 0,	// dynamic
 		margin: 30,
 		padding: 10,
@@ -46,6 +46,7 @@ const DEFAULTS = {
 		step: 1,
 	},
 	yAxis: {
+		scale: 0.0001,	// canvas scale does not work correctly((9
 		// offset: 0,	// dynamic
 		margin: 30,
 		padding: 10,
@@ -53,7 +54,8 @@ const DEFAULTS = {
 		color: '#ADADADAD',
 		lines: 6,
 		step: 60,
-		max: 0
+		showedmax: 0,
+		globalmax: 0,
 	},
 }
 
@@ -79,7 +81,6 @@ var parseBadStruct = function() {
 			console.log(`${allDates.length} days`)
 		}
 	})
-	console.log(allLines)
 	// wow, "showLines=allLines" is not copy, is link o.O
 	// showLines = Array.from(allLines)
 }
@@ -93,12 +94,11 @@ var initSelectors = function() {
 	RGHTMS = document.getElementById("rightSide")
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
 	CANVAS.setAttribute('width', n2w(1000))
-	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * showDates.length / CANVAS.width)
+	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * showDates.length / CANVAS.width)
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
 	let chartSwitches = ""
 	Object.entries(showLines).forEach(([key,line]) => {
-		// fa-square-o fa-check-square
 		chartSwitches +=
 			`
 			<button id="${key}" onclick="switchHandler(this)" type="button" class="btn btn-default waves-effect waves-light toggle-line">
@@ -126,21 +126,25 @@ var switchHandler = function(button) {
 }
 
 var drawAxisLables = function() {
-	DEFAULTS.yAxis.max = 0
+	DEFAULTS.yAxis.showedmax = 0
+	DEFAULTS.yAxis.globalmax = 0
 	Object.entries(showLines).forEach(([key, line])=>{
 		// so that the schedule does not go beyond the workspace
-		const additionalPadding = 10/DEFAULTS.scale
-		let maxValue = Math.max(...line.y) // need diapason
-		if(maxValue>DEFAULTS.yAxis.max) {
-			// find a close multiple of ten after multiplying by scale
-			DEFAULTS.yAxis.max=Math.ceil(maxValue)+additionalPadding
+		const additionalPadding = DEFAULTS.yAxis.padding/DEFAULTS.yAxis.scale
+		let maxShowed = Math.max(...line.y.slice(showArea.from,showArea.to+2))
+		let maxGlobal = Math.max(...line.y)
+		if(maxShowed>DEFAULTS.yAxis.showedmax) {
+			DEFAULTS.yAxis.showedmax=Math.ceil(maxShowed)+additionalPadding
+		}
+		if(maxGlobal>DEFAULTS.yAxis.globalmax) {
+			DEFAULTS.yAxis.globalmax=Math.ceil(maxGlobal)+additionalPadding
 		}
 	})
 
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = showDates.length
+	// let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
-	let rowWidth  = DEFAULTS.rowWidth
+	let rowWidth  = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
 	ctx.font = "1em Candara"
 	ctx.fillStyle = DEFAULTS.yAxis.color
 
@@ -149,18 +153,19 @@ var drawAxisLables = function() {
 	ctx.beginPath()
 	// yAxis labels (static)
 	for (var i = 0; i < rowCount; i++) {
-		ctx.fillText(parseInt(DEFAULTS.yAxis.max * DEFAULTS.scale / rowCount * i), 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
+		ctx.fillText(parseInt(DEFAULTS.yAxis.showedmax * DEFAULTS.yAxis.scale / rowCount * i), 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
 		// ctx.fillText(rowHeight * i, 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
 	}
 	ctx.stroke()
 
 	ctx.textAlign = 'center'
 	ctx.translate(0, DEFAULTS.yAxis.margin)
-	// ctx.translate(DEFAULTS.xAxis.margin, DEFAULTS.yAxis.margin)
 	ctx.beginPath()
 	// xAxis labels (dynamic)
-	for (var i = 0; i < colCount; i++) {
-		ctx.fillText(t2d(showDates[i]), rowWidth*i, CANVAS.height - DEFAULTS.xAxis.padding)
+	let c = 0
+	for (var i = showArea.from; i < showArea.to; i++) {
+		ctx.fillText(t2d(showDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
+		c++
 	}
 	ctx.stroke()
 	
@@ -168,11 +173,11 @@ var drawAxisLables = function() {
 }
 
 var drawPlotLines = function() {
-	let canvasFullWidth = DEFAULTS.rowWidth*showDates.length	// del
+	let canvasFullWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale*showDates.length	// del
 	let rowCount = DEFAULTS.yAxis.labels
-	let colCount = showDates.length
+	// let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
-	let rowWidth  = DEFAULTS.rowWidth
+	let rowWidth  = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
 	ctx.lineWidth = 0.5
 	ctx.strokeStyle = DEFAULTS.xAxis.color
 	ctx.beginPath()
@@ -186,10 +191,12 @@ var drawPlotLines = function() {
 	ctx.beginPath()
 	ctx.strokeStyle = '#E9E9E9E9'
 	// xAxis lines
-	for (var i = 0; i < colCount; i++) {
+	let c = 0
+	for (var i = showArea.from; i < showArea.to; i++) {
 		// because need to think like the bottom left origin
-		ctx.moveTo(rowWidth*i, CANVAS.height)										// 2
-		ctx.lineTo(rowWidth*i, 0)																// 1
+		ctx.moveTo(rowWidth*c, CANVAS.height)										// 2
+		ctx.lineTo(rowWidth*c, 0)																// 1
+		c++
 	}
 	ctx.stroke()
 }
@@ -197,34 +204,40 @@ var drawPlotLines = function() {
 var drawChartLines = function() {
 	ctx.lineWidth = 2.5
 	ctx.lineJoin = DEFAULTS.lineJoin
-	let rowWidth  = DEFAULTS.rowWidth
+	let rowWidth  = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
 	Object.entries(showLines).forEach(([key,line]) => {
 		
 		ctx.strokeStyle = line.color
 		ctx.beginPath()
-		line.y.forEach((dot,i) => {
-			ctx.lineTo(rowWidth*i, yrv(dot));
-		})
+		let c = 0	//
+		for (var i = showArea.from; i < showArea.to; i++) {
+			ctx.lineTo(rowWidth*c, yrv(line.y[i]))
+			c++
+		}
 		ctx.stroke()
 
-		line.y.forEach((dot,i) => {
-			if(i) {
-				ctx.beginPath()
-				ctx.arc(rowWidth*i, yrv(dot), 5, 0, 2 * Math.PI)
-				ctx.clearRect(rowWidth*i-5,yrv(dot)-5,5*2,5*2);
-				ctx.stroke()
-			}
-		})
+		let d = 0
+		for (var i = showArea.from; i < showArea.to; i++) {
+			ctx.beginPath()
+			ctx.arc(rowWidth*d, yrv(line.y[i]), 5, 0, 2 * Math.PI)
+			ctx.clearRect(rowWidth*d-5,yrv(line.y[i])-5,5*2,5*2)
+			ctx.stroke()
+			d++
+		}
 
 	})
 }
-var redrawChartLines = function() {	
-	let canvasFullWidth = DEFAULTS.rowWidth*showDates.length
+var redrawChartLines = function() {
+	let step = allDates.length/MAPLAY.getBoundingClientRect().width
+	// int required!!1
+	showArea.from = parseInt(MAPSEL.offsetLeft*step)
+	showArea.to = parseInt((MAPSEL.offsetLeft+MAPSEL.getBoundingClientRect().width)*step)
+	DEFAULTS.xAxis.scale = (CANVAS.width/(showArea.to-showArea.from))/DEFAULTS.rowWidth
+	let canvasFullWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale*showDates.length
 	const SELECTOR = MAPSEL.getBoundingClientRect()
 	// render after mouseup (well, at least here the optimization was delivered)
-	ctx.translate( -(SELECTOR.x - lastClientX) * ( (canvasFullWidth - CANVAS.width) / (400 - SELECTOR.width) ), DEFAULTS.yAxis.margin)
-	// ctx.clearRect(0, 0, CANVAS.width, CANVAS.height)
-	ctx.clearRect(0, 0, canvasFullWidth, CANVAS.height)
+	ctx.translate(0, DEFAULTS.yAxis.margin)
+	ctx.clearRect(0, 0, CANVAS.width, CANVAS.height)
 	lastClientX = SELECTOR.x
 	drawAxisLables()
 	drawPlotLines()
@@ -232,6 +245,11 @@ var redrawChartLines = function() {
 }
 
 var pluginScrolling = function() {
+	let step = showDates.length/MAPLAY.getBoundingClientRect().width
+	// int required!!1
+	showArea.from = parseInt(MAPSEL.offsetLeft*step)
+	showArea.to = parseInt((MAPSEL.offsetLeft+MAPSEL.getBoundingClientRect().width)*step)
+	DEFAULTS.xAxis.scale = (CANVAS.width/(showArea.to-showArea.from))/DEFAULTS.rowWidth
 
 	// selector moves around the map only xAxis
 	let innerLeftOffset = 0
@@ -254,6 +272,7 @@ var pluginScrolling = function() {
 		if(offsetByParent>=0&&offsetByParent<=(LAYOUT.width-SELECTOR.width)) {
 			MAPSEL.style.left = n2w(e.clientX + innerLeftOffset)
 		}
+		// resize??
 	}
 }
 
@@ -264,8 +283,8 @@ var drawMapLines = function() {
 		
 		mtx.strokeStyle = line.color
 		mtx.beginPath()
-		line.y.forEach((dot,i) => {
-			let y = MAPLAY.height-dot*DEFAULTS.scale*(MAPLAY.height/(DEFAULTS.yAxis.max*DEFAULTS.scale));
+		line.x.forEach((dot,i) => {
+			let y = MAPLAY.height-line.y[i]*DEFAULTS.yAxis.scale*(MAPLAY.height/(DEFAULTS.yAxis.globalmax*DEFAULTS.yAxis.scale));
 			let rowWidth = MAPLAY.width/showDates.length;
 			mtx.lineTo(rowWidth*i, y);
 		})
@@ -287,8 +306,8 @@ var drawMapSelector = function() {
 		
 	// 	mtx.strokeStyle = line.color
 	// 	mtx.beginPath()
-	// 	line.y.forEach((dot,i) => {
-	// 		let y = MAPLAY.height-dot*DEFAULTS.scale*(MAPLAY.height/(DEFAULTS.yAxis.max*DEFAULTS.scale));
+	// 	line.x.forEach((dot,i) => {
+	// 		let y = MAPLAY.height-line.y[i]*DEFAULTS.yAxis.scale*(MAPLAY.height/(DEFAULTS.yAxis.globalmax*DEFAULTS.yAxis.scale));
 	// 		let rowWidth = MAPLAY.width/showDates.length;
 	// 		mtx.lineTo(rowWidth*i, y);
 	// 	})
