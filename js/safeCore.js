@@ -45,10 +45,7 @@ var mode = 'light' // night
 var CNTNER,CANVAS,MAPSEL,MAPLAY,SWTCHS
 var ctx,mtx
 // animation
-var requestAnimationFrame = window.requestAnimationFrame || 
-                            window.mozRequestAnimationFrame || 
-                            window.webkitRequestAnimationFrame || 
-                            window.msRequestAnimationFrame;
+var requestAnimationFrame = window.requestAnimationFrame||window.mozRequestAnimationFrame||window.webkitRequestAnimationFrame||window.msRequestAnimationFrame
 // structures
 var allLines = Array()
 var allDates = Array()
@@ -124,7 +121,7 @@ const DEFAULTS = {
 var parseBadStruct = function() {
 	// included in html
 	bigdata = bigdata[0]
-	// console.log(bigdata)
+	console.log(bigdata)
 	let keys = Array()
 	// bazat is a connecting link in any incomprehensible situation
 	bigdata.columns.map((bazat)=>keys.push(bazat[0]))
@@ -155,6 +152,15 @@ var initSelectors = function() {
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
 	CANVAS.setAttribute('width', n2w(DEFAULTS.width))
 	MAPLAY.setAttribute('width', n2w(DEFAULTS.width))
+	
+	Object.entries(allLines).forEach(([key, line])=>{
+		let maxGlobal = Math.max(...line.y)
+		if(maxGlobal>DEFAULTS.yAxis.globalmax) {
+			DEFAULTS.yAxis.globalmax=Math.ceil(maxGlobal)
+		}
+	})
+	DEFAULTS.yAxis.scale = CANVAS.height / DEFAULTS.yAxis.globalmax
+
 	MAPSEL.style.width = n2w(MAPLAY.width/10) // n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width)
 	DEFAULTS.xAxis.leftOffset = CANVAS.getBoundingClientRect().left
 	DEFAULTS.mapSelector.leftOffset = MAPLAY.getBoundingClientRect().left
@@ -194,12 +200,12 @@ var drawAxisLables = function() {
 	DEFAULTS.yAxis.globalmax = 0
 	Object.entries(showLines).forEach(([key, line])=>{
 		// so that the schedule does not go beyond the workspace
-		const additionalPadding = DEFAULTS.yAxis.padding/DEFAULTS.yAxis.scale
+		const additionalPadding = parseInt(DEFAULTS.yAxis.padding/DEFAULTS.yAxis.scale)
 		let maxShowed = Math.max(...line.y.slice(showArea.from,showArea.to+2))
-		let maxGlobal = Math.max(...line.y)
 		if(maxShowed>DEFAULTS.yAxis.showedmax) {
 			DEFAULTS.yAxis.showedmax=Math.ceil(maxShowed)+additionalPadding
 		}
+		let maxGlobal = Math.max(...line.y)
 		if(maxGlobal>DEFAULTS.yAxis.globalmax) {
 			DEFAULTS.yAxis.globalmax=Math.ceil(maxGlobal)+additionalPadding
 		}
@@ -229,7 +235,7 @@ var drawAxisLables = function() {
 	ctx.translate(0, DEFAULTS.yAxis.margin)
 	ctx.beginPath()
 	// xAxis labels (dynamic)
-	const visible = parseInt((showArea.to-showArea.from)/DEFAULTS.xAxis.labels)
+	const visible = Math.ceil((showArea.to-showArea.from)/DEFAULTS.xAxis.labels)
 	let c = 0
 	for (var i = showArea.from; i < showArea.to; i++) {
 		// love $this <3
