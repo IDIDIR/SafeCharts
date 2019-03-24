@@ -42,6 +42,11 @@ var n2w =(n)=> n+'px'
 // elements
 var CNTNER,CANVAS,MAPSEL,MAPLAY,SWTCHS
 var ctx,mtx
+// animation
+var requestAnimationFrame = window.requestAnimationFrame || 
+                            window.mozRequestAnimationFrame || 
+                            window.webkitRequestAnimationFrame || 
+                            window.msRequestAnimationFrame;
 // structures
 var allLines = Array()
 var allDates = Array()
@@ -86,7 +91,7 @@ const DEFAULTS = {
 		globalmax: 0,
 	},
 	mapSelector: {
-		border: 5,			// left&right for resize
+		border: 7.5,			// left&right for resize
 		minWidth: 0,
 		leftOffset: 0,
 	},
@@ -169,7 +174,7 @@ var switchHandler = function(button) {
 		button.querySelector(`span>i`).classList.remove('fa-square-o')
 		button.querySelector(`span>i`).classList.add('fa-check-square')
 	}
-	redrawChartLines()	
+	redrawChartLines()
 	redrawMapLines()
 }
 
@@ -287,7 +292,8 @@ var redrawChartLines = function() {
 	lastClientX = SELECTOR.x
 	drawAxisLables()
 	drawPlotLines()
-	drawChartLines()
+	// it's animation? oke
+	requestAnimationFrame(drawChartLines)
 }
 
 var pluginteractivity = function() {
@@ -373,7 +379,9 @@ var pluginteractivity = function() {
 var drawChartPopup = function(showedIndex,globalIndex) {
 	let popup = DEFAULTS.chartPopup
 	let rowWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
-
+	// overlay effect
+	ctx.fillStyle = 'rgba(137, 162, 165, 0.08)'
+	ctx.fillRect(0, 0, DEFAULTS.width, CANVAS.height)
 	// vertical line
 	ctx.lineWidth = 1.5
 	ctx.strokeStyle = popup.border
@@ -445,14 +453,15 @@ var drawMapLines = function() {
 			mtx.lineTo(rowWidth*i, y)
 		})
 		mtx.stroke()
-		mtx.fillStyle = 'rgba(137, 162, 165, 0.04)'
-		mtx.fillRect(0, 0, DEFAULTS.width, 60)
 
 	})
+	mtx.fillStyle = 'rgba(137, 162, 165, 0.15)'
+	mtx.fillRect(0, 0, DEFAULTS.width, 60)
 }
 var redrawMapLines = function() {	
 	mtx.clearRect(0, 0, MAPLAY.width, MAPLAY.height)
-	drawMapLines()
+	// it's animation? oke
+	requestAnimationFrame(drawMapLines)
 }
 
 /* - - - - - - - - - -*/

@@ -28,6 +28,9 @@
 	position: absolute;
 	opacity: 0.5;
 }
+#chartSwitches {
+	width: 100%;
+}
 /*
 							HighCharts	SafeCharts
 Agred Link		bottomright	clear
