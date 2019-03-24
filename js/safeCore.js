@@ -39,6 +39,8 @@ var t2d =(t)=> ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 var w2n =(w)=> w.replace('px','')
 var n2w =(n)=> n+'px'
 
+// mode
+var mode = 'light' // night
 // elements
 var CNTNER,CANVAS,MAPSEL,MAPLAY,SWTCHS
 var ctx,mtx
@@ -70,6 +72,8 @@ const DEFAULTS = {
 	lineJoin: 'round',
 	rowHeight: 60,
 	rowWidth: 60,		// dynamic
+	background: '#FFF',
+	text: '#343A40',
 	xAxis: {
 		scale: 1,
 		margin: 30,
@@ -94,12 +98,16 @@ const DEFAULTS = {
 		border: 7.5,			// left&right for resize
 		minWidth: 0,
 		leftOffset: 0,
+		overlay: 'rgba(137, 162, 165, 0.15)',
+		background: '#ffffff90',
 	},
 	chartPopup: {
 		circle: 5,
 		background: '#FFF',
 		border: '#CCC',
+		line: '#CCC',
 		title: '#343A40',
+		overlay: 'rgba(137, 162, 165, 0.07)',
 		radius: 10,
 		left: 0,				// dynamic
 		top: 50,
@@ -107,6 +115,9 @@ const DEFAULTS = {
 		height: 0,			// dynamic
 		padding: 15,
 		between: 55,
+	},
+	chartSwitches: {
+		border: '#cfcfcf'
 	}
 }
 
@@ -193,6 +204,10 @@ var drawAxisLables = function() {
 			DEFAULTS.yAxis.globalmax=Math.ceil(maxGlobal)+additionalPadding
 		}
 	})
+
+	// fill the background
+	ctx.fillStyle = DEFAULTS.background
+	ctx.fillRect(0, 0, DEFAULTS.width, CANVAS.height)
 
 	let rowCount = DEFAULTS.yAxis.labels
 	let rowHeight = DEFAULTS.rowHeight
@@ -380,11 +395,11 @@ var drawChartPopup = function(showedIndex,globalIndex) {
 	let popup = DEFAULTS.chartPopup
 	let rowWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
 	// overlay effect
-	ctx.fillStyle = 'rgba(137, 162, 165, 0.08)'
+	ctx.fillStyle = DEFAULTS.chartPopup.overlay
 	ctx.fillRect(0, 0, DEFAULTS.width, CANVAS.height)
 	// vertical line
 	ctx.lineWidth = 1.5
-	ctx.strokeStyle = popup.border
+	ctx.strokeStyle = popup.line
 	ctx.beginPath()
 	ctx.moveTo(rowWidth*showedIndex, CANVAS.height)
 	ctx.lineTo(rowWidth*showedIndex, popup.top+popup.radius)
@@ -393,10 +408,11 @@ var drawChartPopup = function(showedIndex,globalIndex) {
 	Object.entries(showLines).forEach(([key,line]) => {
 		ctx.lineWidth = 2.5
 		ctx.strokeStyle = line.color
+		ctx.fillStyle = DEFAULTS.background
 		let circleSize = popup.circle
 		ctx.beginPath()
 		ctx.arc(rowWidth*showedIndex,yrv(line.y[globalIndex]),circleSize,0,2*Math.PI)
-		ctx.clearRect(rowWidth*showedIndex-circleSize,yrv(line.y[globalIndex])-circleSize,circleSize*2,circleSize*2)
+		ctx.fillRect(rowWidth*showedIndex-circleSize,yrv(line.y[globalIndex])-circleSize,circleSize*2,circleSize*2) // clearRect
 		ctx.stroke()
 	})
 	// chart rectangle
@@ -444,7 +460,6 @@ var drawMapLines = function() {
 	mtx.lineWidth = 1.5
 	mtx.lineJoin = DEFAULTS.lineJoin
 	Object.entries(showLines).forEach(([key,line]) => {
-		
 		mtx.strokeStyle = line.color
 		mtx.beginPath()
 		line.x.forEach((dot,i) => {
@@ -453,10 +468,9 @@ var drawMapLines = function() {
 			mtx.lineTo(rowWidth*i, y)
 		})
 		mtx.stroke()
-
 	})
-	mtx.fillStyle = 'rgba(137, 162, 165, 0.15)'
-	mtx.fillRect(0, 0, DEFAULTS.width, 60)
+	mtx.fillStyle = DEFAULTS.mapSelector.overlay
+	mtx.fillRect(0, 0, DEFAULTS.width, MAPLAY.height)
 }
 var redrawMapLines = function() {	
 	mtx.clearRect(0, 0, MAPLAY.width, MAPLAY.height)
@@ -464,6 +478,44 @@ var redrawMapLines = function() {
 	requestAnimationFrame(drawMapLines)
 }
 
+var toogleMode = function(button) {
+	if(mode=='night') { mode = 'light'
+		DEFAULTS.xAxis.color = '#CFCFCFCF'
+		DEFAULTS.background = '#FFF'
+		DEFAULTS.text = '#343a40'
+		DEFAULTS.chartSwitches.border = '#CFCFCF'
+		DEFAULTS.mapSelector.background = '#ffffff90'
+		DEFAULTS.mapSelector.overlay = 'rgba(137, 162, 165, 0.07)'
+		DEFAULTS.chartPopup.background = '#FFF'
+		DEFAULTS.chartPopup.border = '#CCC'
+		DEFAULTS.chartPopup.line = '#CCC'
+		DEFAULTS.chartPopup.title = '#343a40'
+		DEFAULTS.chartPopup.overlay = 'rgba(137, 162, 165, 0.07)'
+	} else 
+	if(mode=='light') { mode = 'night'
+		DEFAULTS.xAxis.color = '#1f2225'
+		DEFAULTS.background = '#242f3a'
+		DEFAULTS.text = '#FFF'
+		DEFAULTS.chartSwitches.border = '#ADADADAD'
+		DEFAULTS.mapSelector.background = '#ffffff20'
+		DEFAULTS.mapSelector.overlay = 'rgba(137, 162, 165, 0.07)'
+		DEFAULTS.chartPopup.background = '#242f3a'
+		DEFAULTS.chartPopup.border = '#40454a'
+		DEFAULTS.chartPopup.line = '#444e50'
+		DEFAULTS.chartPopup.title = '#FFF'
+		DEFAULTS.chartPopup.overlay = 'rgba(137, 162, 165, 0.04)'
+	}
+
+	document.getElementById("allPage").style['background-color'] = DEFAULTS.background
+	document.getElementById("allPage").style['color'] = DEFAULTS.text
+	MAPSEL.style['background-color'] = DEFAULTS.mapSelector.background
+	// kostyle edition
+	Array.from(document.getElementsByClassName("line-name")).forEach((span)=>span.style.color = DEFAULTS.text)
+	Array.from(document.getElementsByClassName("toggle-line")).forEach((span)=>span.style['border-color'] = DEFAULTS.chartSwitches.border)
+
+	redrawChartLines()
+	redrawMapLines()
+}
 /* - - - - - - - - - -*/
 parseBadStruct()
 initSelectors()
