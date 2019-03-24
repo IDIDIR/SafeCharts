@@ -556,7 +556,7 @@ var toogleMode = function(button) {
 	redrawMapLines()
 }
 /* - - - - - - - - - -*/
-parseStruct(4)
+parseStruct(theChart)
 initSelectors()
 pluginteractivity()
 drawAxisLables()
