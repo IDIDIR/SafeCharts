@@ -36,6 +36,11 @@
 	top: 10px;
 	right: 10px;
 }
+#chartSwitchers {
+	position: fixed;
+	top: 3px;
+	right: 55px;
+}
 /*
 							HighCharts	SafeCharts
 Agred Link		bottomright	clear

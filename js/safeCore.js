@@ -40,9 +40,10 @@ var w2n =(w)=> w.replace('px','')
 var n2w =(n)=> n+'px'
 
 // mode
-var mode = 'light' // night
+var mode = 'light' 	// night
+var theChart = 4		// 0-4
 // elements
-var CNTNER,CANVAS,MAPSEL,MAPLAY,SWTCHS
+var CNTNER,CANVAS,MAPSEL,MAPLAY,SWTCHS,CHARTS
 var ctx,mtx
 // animation
 var requestAnimationFrame = window.requestAnimationFrame||window.mozRequestAnimationFrame||window.webkitRequestAnimationFrame||window.msRequestAnimationFrame
@@ -113,29 +114,36 @@ const DEFAULTS = {
 		padding: 15,
 		between: 55,
 	},
-	chartSwitches: {
+	lineSwitchers: {
 		border: '#cfcfcf'
 	}
 }
 
-var parseBadStruct = function() {
+var parseStruct = function(index) {
+	// 30 min before deadline
+	allLines = Array()
+	allDates = Array()
+	showLines = Array()
+	showArea = {from:0,to:0}
+	DEFAULTS.yAxis.showedmax = 0
+	DEFAULTS.yAxis.globalmax = 0
 	// included in html
-	bigdata = bigdata[0]
-	console.log(bigdata)
+	let current = bigdata[index]
+	// console.log(current)
 	let keys = Array()
 	// bazat is a connecting link in any incomprehensible situation
-	bigdata.columns.map((bazat)=>keys.push(bazat[0]))
+	current.columns.map((bazat)=>keys.push(bazat[0]))
 	keys.forEach((key,i)=>{
-		if(bigdata.types[key]=="line"){
+		if(current.types[key]=="line"){
 			let line = Object()
-			line.name  = bigdata.names[key]
-			line.color = bigdata.colors[key]
-			line.y  	 = bigdata.columns[i].slice(1)
+			line.name  = current.names[key]
+			line.color = current.colors[key]
+			line.y  	 = current.columns[i].slice(1)
 			line.x  	 = allDates
 			allLines[key] = new Line(line)
 			showLines[key] = new Line(line)
 		} else {
-			allDates = bigdata.columns[i].slice(1)
+			allDates = current.columns[i].slice(1)
 			console.log(`Was loaded ${allDates.length} days`)
 		}
 	})
@@ -147,7 +155,8 @@ var initSelectors = function() {
 	CANVAS = document.getElementById("safeChart")
 	MAPSEL = document.getElementById("mapSelector")
 	MAPLAY = document.getElementById("mapLayout")
-	SWTCHS = document.getElementById("chartSwitches")
+	SWTCHS = document.getElementById("lineSwitchers")
+	CHARTS = document.getElementById("chartSwitchers")
 	DEFAULTS.width = CNTNER.getBoundingClientRect().width-30
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
 	CANVAS.setAttribute('width', n2w(DEFAULTS.width))
@@ -167,9 +176,10 @@ var initSelectors = function() {
 	DEFAULTS.mapSelector.minWidth = DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
-	let chartSwitches = ""
+	// lines switchers
+	let lineSwitchers = ""
 	Object.entries(showLines).forEach(([key,line]) => {
-		chartSwitches +=
+		lineSwitchers +=
 			`
 			<button id="${key}" onclick="switchHandler(this)" type="button" class="btn btn-default waves-effect waves-light toggle-line">
 				<span><i class="fa fa-check-square" style="color:${line.color}"></i></span>
@@ -177,7 +187,19 @@ var initSelectors = function() {
 			</button>
 			`
 	})
-	SWTCHS.innerHTML = chartSwitches
+	SWTCHS.innerHTML = lineSwitchers
+	// chart switchers
+	let chartSwitches = ""
+	for (var i=0; i<bigdata.length; i++) {
+		chartSwitches +=
+			`
+			<button id="${i}" onclick="changeHandler(this)" type="button" class="btn btn-default waves-effect waves-light toggle-line">
+				<span><i class="fa ${(i==theChart)?'fa-circle':'fa-circle-o'}" style="color:#70a091"></i></span>
+				<span class="line-name"></span>
+			</button>
+			`
+	}
+	CHARTS.innerHTML = chartSwitches
 }
 
 var switchHandler = function(button) {
@@ -193,6 +215,17 @@ var switchHandler = function(button) {
 	}
 	redrawChartLines()
 	redrawMapLines()
+}
+
+var changeHandler = function(button) {
+	theChart = button.id
+	parseStruct(button.id)
+	initSelectors()
+	pluginteractivity()
+	drawAxisLables()
+	drawPlotLines()
+	drawChartLines()
+	drawMapLines()
 }
 
 var drawAxisLables = function() {
@@ -489,7 +522,7 @@ var toogleMode = function(button) {
 		DEFAULTS.xAxis.color = '#CFCFCFCF'
 		DEFAULTS.background = '#FFF'
 		DEFAULTS.text = '#343a40'
-		DEFAULTS.chartSwitches.border = '#CFCFCF'
+		DEFAULTS.lineSwitchers.border = '#CFCFCF'
 		DEFAULTS.mapSelector.background = '#ffffff90'
 		DEFAULTS.mapSelector.overlay = 'rgba(137, 162, 165, 0.07)'
 		DEFAULTS.chartPopup.background = '#FFF'
@@ -502,7 +535,7 @@ var toogleMode = function(button) {
 		DEFAULTS.xAxis.color = '#1f2225'
 		DEFAULTS.background = '#242f3a'
 		DEFAULTS.text = '#FFF'
-		DEFAULTS.chartSwitches.border = '#ADADADAD'
+		DEFAULTS.lineSwitchers.border = '#ADADADAD'
 		DEFAULTS.mapSelector.background = '#ffffff20'
 		DEFAULTS.mapSelector.overlay = 'rgba(137, 162, 165, 0.07)'
 		DEFAULTS.chartPopup.background = '#242f3a'
@@ -517,13 +550,13 @@ var toogleMode = function(button) {
 	MAPSEL.style['background-color'] = DEFAULTS.mapSelector.background
 	// kostyle edition
 	Array.from(document.getElementsByClassName("line-name")).forEach((span)=>span.style.color = DEFAULTS.text)
-	Array.from(document.getElementsByClassName("toggle-line")).forEach((span)=>span.style['border-color'] = DEFAULTS.chartSwitches.border)
+	Array.from(document.getElementsByClassName("toggle-line")).forEach((span)=>span.style['border-color'] = DEFAULTS.lineSwitchers.border)
 
 	redrawChartLines()
 	redrawMapLines()
 }
 /* - - - - - - - - - -*/
-parseBadStruct()
+parseStruct(4)
 initSelectors()
 pluginteractivity()
 drawAxisLables()
