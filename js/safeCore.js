@@ -291,6 +291,10 @@ var redrawChartLines = function() {
 }
 
 var pluginteractivity = function() {
+	var isTouchSupported = 'ontouchstart' in window
+	var startEvent 	= isTouchSupported ? 'touchstart' : 'mousedown'
+	var moveEvent 	= isTouchSupported ? 'touchmove' 	: 'mousemove'
+	var endEvent 		= isTouchSupported ? 'touchend' 	: 'mouseup'
 	let step = allDates.length/MAPLAY.getBoundingClientRect().width
 	// int required!!1
 	showArea.from = parseInt(MAPSEL.offsetLeft*step)
@@ -302,24 +306,25 @@ var pluginteractivity = function() {
 	let middleLeftOffset = 0
 	let outerLeftOffset = 0
 	lastClientX = MAPSEL.getBoundingClientRect().x
-	MAPSEL.addEventListener('mousedown', mouseDown, false)
-	window.addEventListener('mouseup', mouseUp, false)
+	MAPSEL.addEventListener(startEvent, mouseDown, false)
+	window.addEventListener(endEvent, mouseUp, false)
 	CANVAS.addEventListener('click', chartPopup, false)
 	
 	function mouseUp(e) {
 		redrawChartLines()
-		window.removeEventListener('mousemove', move, true)
+		window.removeEventListener(moveEvent, move, true)
 	}
-	function mouseDown(e) {		
+	function mouseDown(e) {
+		let clientX = e.clientX || e.targetTouches[0].clientX
 		let border = DEFAULTS.mapSelector.border
 		var SELECTOR = MAPSEL.getBoundingClientRect()
 		outerLeftOffset = DEFAULTS.mapSelector.leftOffset
 		middleLeftOffset = SELECTOR.left-outerLeftOffset
-		innerLeftOffset = e.clientX - SELECTOR.left
+		innerLeftOffset = clientX - SELECTOR.left
 		lastSelectorWidth = SELECTOR.width
-		let isBody = (e.clientX>(SELECTOR.x+border))&&(e.clientX<(SELECTOR.x+SELECTOR.width-border))
-		let isLeft = (e.clientX>=(SELECTOR.x))&&(e.clientX<=(SELECTOR.x+border))
-		let isRight = (e.clientX>=(SELECTOR.x+SELECTOR.width-border))&&(e.clientX<=(SELECTOR.x+SELECTOR.width))
+		let isBody = (clientX>(SELECTOR.x+border))&&(clientX<(SELECTOR.x+SELECTOR.width-border))
+		let isLeft = (clientX>=(SELECTOR.x))&&(clientX<=(SELECTOR.x+border))
+		let isRight = (clientX>=(SELECTOR.x+SELECTOR.width-border))&&(clientX<=(SELECTOR.x+SELECTOR.width))
 		if (false) bazat in miami
 		else if (isBody)
 			mapselMode='scroll'
@@ -327,14 +332,15 @@ var pluginteractivity = function() {
 			mapselMode='lscale'
 		else if (isRight)
 			mapselMode='rscale'
-		window.addEventListener('mousemove', move, true)
+		window.addEventListener(moveEvent, move, true)
 	}
 	function move(e) {
+		let clientX = e.clientX || e.targetTouches[0].clientX
 		const SELECTOR = MAPSEL.getBoundingClientRect()
 		const LAYOUT = MAPLAY.getBoundingClientRect()
-		let dynamicOffset = e.clientX-outerLeftOffset-innerLeftOffset
+		let dynamicOffset = clientX-outerLeftOffset-innerLeftOffset
 		if (mapselMode=='lscale') {
-			dynamicOffset = e.clientX - outerLeftOffset
+			dynamicOffset = clientX - outerLeftOffset
 			let currentWidth = middleLeftOffset - dynamicOffset + lastSelectorWidth
 			if((dynamicOffset>=0)&&(currentWidth>=DEFAULTS.mapSelector.minWidth)) {
 				MAPSEL.style.left = n2w(dynamicOffset)
@@ -342,7 +348,7 @@ var pluginteractivity = function() {
 			}
 		}
 		if (mapselMode=='rscale') {
-			let currentWidth = e.clientX - outerLeftOffset - middleLeftOffset
+			let currentWidth = clientX - outerLeftOffset - middleLeftOffset
 			if((dynamicOffset<=(LAYOUT.width-lastSelectorWidth))&&(dynamicOffset>=middleLeftOffset+DEFAULTS.mapSelector.minWidth-lastSelectorWidth)) {
 				MAPSEL.style.width = n2w(currentWidth)
 			}
@@ -354,8 +360,9 @@ var pluginteractivity = function() {
 		}
 	}
 	function chartPopup(e) {
+		let clientX = e.clientX || e.targetTouches[0].clientX
 		let rowWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
-		let showedLocation = e.clientX-DEFAULTS.xAxis.leftOffset
+		let showedLocation = clientX-DEFAULTS.xAxis.leftOffset
 		let showedIndex = Math.round(showedLocation/rowWidth)
 		let globalIndex = showArea.from+showedIndex
 		drawChartPopup(showedIndex,globalIndex)
@@ -438,7 +445,7 @@ var drawMapLines = function() {
 			mtx.lineTo(rowWidth*i, y)
 		})
 		mtx.stroke()
-		mtx.fillStyle = 'rgba(137, 162, 165, 0.05)'
+		mtx.fillStyle = 'rgba(137, 162, 165, 0.04)'
 		mtx.fillRect(0, 0, DEFAULTS.width, 60)
 
 	})
