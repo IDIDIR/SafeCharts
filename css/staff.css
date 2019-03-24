@@ -1,7 +1,8 @@
-
+/* This From Peolpe 2 People */
 .toggle-line {
 	border: 1px solid #cfcfcf
 }
+/* And This From Peolpe 2 People */
 #miniMap {
 	position: relative; 
 	height: 60px;
@@ -11,6 +12,7 @@
 	margin-right: 15px;
 	margin-left: 15px;
 }
+/* And This */
 #mapSelector {
 	position: absolute;
 	/* yeah baby, it seems that it looks like a customer’s layout */
@@ -23,7 +25,18 @@
 	height: 60px;
 	z-index: 1;
 }
+/* It's Also From Peolpe 2 People */
 #mapLayout {
 	position: absolute;
 	opacity: 0.5;
 }
+/*
+							HighCharts	SafeCharts
+Agred Link		bottomright	clear
+Last Update		earlier			today
+Work From Box	---					+++
+Weight				1.72Mb			13Kb
+SVG Dpndency	need spprt	Indpndnt
+-------------	-----------	----------
+Total					++					+++++++
+*/

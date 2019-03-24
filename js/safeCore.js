@@ -1,10 +1,37 @@
 /*
-  * SafeCharts
+  * SafeCharts - From Peolpe 2 People
    * Copyright 2019 The AICC inc.
     * Very speed, efficiency and the size of the app
      * * * * * * * * * * * * * * * * * * * * * * * * */
 
 "use strict"
+
+// the legacy extention by https://stackoverflow.com/a/7838871
+CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  this.beginPath();
+  this.moveTo(x+r, y);
+  this.arcTo(x+w, y,   x+w, y+h, r);
+  this.arcTo(x+w, y+h, x,   y+h, r);
+  this.arcTo(x,   y+h, x,   y,   r);
+  this.arcTo(x,   y,   x+w, y,   r);
+  this.closePath();
+  return this;
+}
+// also nearly legacy "number to abbreviate number converter" by https://stackoverflow.com/a/10601315
+var shortNum = function (y, fix=true) {
+  let newValue = (fix)?parseInt(DEFAULTS.yAxis.showedmax/DEFAULTS.yAxis.labels*y):y
+  const suffixes = ["", "K", "M", "B","T"]
+  let suffixNum = 0
+  while (newValue >= 1000) {
+    newValue /= 1000
+    suffixNum++
+	}
+  newValue = (newValue)?newValue.toPrecision(3):newValue
+  newValue += suffixes[suffixNum]
+  return newValue
+}
 
 // demo of reducing the size of the application
 var yrv =(y)=> CANVAS.height-y*DEFAULTS.yAxis.scale*((CANVAS.height-DEFAULTS.xAxis.margin)/(DEFAULTS.yAxis.showedmax*DEFAULTS.yAxis.scale))
@@ -19,7 +46,6 @@ var ctx,mtx
 var allLines = Array()
 var allDates = Array()
 var showLines = Array()
-var showDates = Array()
 var showArea = {from:0,to:0}
 class Line {
   constructor(line) {
@@ -45,6 +71,7 @@ const DEFAULTS = {
 		labels: 6,
 		color: '#CFCFCFCF',
 		step: 1,
+		leftOffset: 0,
 	},
 	yAxis: {
 		scale: 0.0001,	// canvas scale does not work correctly((9
@@ -61,13 +88,26 @@ const DEFAULTS = {
 		border: 5,			// left&right for resize
 		minWidth: 0,
 		leftOffset: 0,
+	},
+	chartPopup: {
+		circle: 5,
+		background: '#FFF',
+		border: '#CCC',
+		title: '#343A40',
+		radius: 10,
+		left: 0,				// dynamic
+		top: 50,
+		width: 0,				// dynamic
+		height: 0,			// dynamic
+		padding: 15,
+		between: 70,
 	}
 }
 
 var parseBadStruct = function() {
 	// included in html
 	bigdata = bigdata[0]
-	console.log(bigdata)
+	// console.log(bigdata)
 	let keys = Array()
 	// bazat is a connecting link in any incomprehensible situation
 	bigdata.columns.map((bazat)=>keys.push(bazat[0]))
@@ -77,17 +117,15 @@ var parseBadStruct = function() {
 			line.name  = bigdata.names[key]
 			line.color = bigdata.colors[key]
 			line.y  	 = bigdata.columns[i].slice(1)
-			line.x  	 = showDates
+			line.x  	 = allDates
 			allLines[key] = new Line(line)
 			showLines[key] = new Line(line)
 		} else {
 			allDates = bigdata.columns[i].slice(1)
-			showDates = bigdata.columns[i].slice(1)
-			console.log(`${allDates.length} days`)
+			console.log(`Was loaded ${allDates.length} days`)
 		}
 	})
 	// wow, "showLines=allLines" is not copy, is link o.O
-	// showLines = Array.from(allLines)
 }
 
 var initSelectors = function() {
@@ -97,9 +135,10 @@ var initSelectors = function() {
 	SWTCHS = document.getElementById("chartSwitches")
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
 	CANVAS.setAttribute('width', n2w(1000))
-	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * showDates.length / CANVAS.width)
+	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width)
+	DEFAULTS.xAxis.leftOffset = CANVAS.getBoundingClientRect().left
 	DEFAULTS.mapSelector.leftOffset = MAPLAY.getBoundingClientRect().left
-	DEFAULTS.mapSelector.minWidth = DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * showDates.length / CANVAS.width
+	DEFAULTS.mapSelector.minWidth = DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width
 	ctx = CANVAS.getContext("2d")
 	mtx = MAPLAY.getContext("2d")
 	let chartSwitches = ""
@@ -131,6 +170,8 @@ var switchHandler = function(button) {
 }
 
 var drawAxisLables = function() {
+	DEFAULTS.yAxis.showedmax = 0
+	DEFAULTS.yAxis.globalmax = 0
 	Object.entries(showLines).forEach(([key, line])=>{
 		// so that the schedule does not go beyond the workspace
 		const additionalPadding = DEFAULTS.yAxis.padding/DEFAULTS.yAxis.scale
@@ -145,9 +186,9 @@ var drawAxisLables = function() {
 	})
 
 	let rowCount = DEFAULTS.yAxis.labels
-	// let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
 	let rowWidth  = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
+	ctx.textBaseline = 'bottom'
 	ctx.font = "1em Candara"
 	ctx.fillStyle = DEFAULTS.yAxis.color
 
@@ -156,7 +197,7 @@ var drawAxisLables = function() {
 	ctx.beginPath()
 	// yAxis labels (static)
 	for (var i = 0; i < rowCount; i++) {
-		ctx.fillText(parseInt(DEFAULTS.yAxis.showedmax * DEFAULTS.yAxis.scale / rowCount * i), 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
+		ctx.fillText(shortNum(i), 0, CANVAS.height - rowHeight * i - DEFAULTS.yAxis.padding)
 	}
 	ctx.stroke()
 
@@ -168,7 +209,7 @@ var drawAxisLables = function() {
 	let c = 0
 	for (var i = showArea.from; i < showArea.to; i++) {
 		// love $this <3
-		if(i&&!(i%visible)) ctx.fillText(t2d(showDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
+		if(i&&!(i%visible)) ctx.fillText(t2d(allDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
 		c++
 	}
 	ctx.stroke()
@@ -178,7 +219,6 @@ var drawAxisLables = function() {
 
 var drawPlotLines = function() {
 	let rowCount = DEFAULTS.yAxis.labels
-	// let colCount = showDates.length
 	let rowHeight = DEFAULTS.rowHeight
 	let rowWidth  = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
 	ctx.lineWidth = 0.5
@@ -190,17 +230,17 @@ var drawPlotLines = function() {
 		ctx.lineTo(CANVAS.width, CANVAS.height - rowHeight * i)			// 2
 	}
 	ctx.stroke()
-	ctx.beginPath()
-	ctx.strokeStyle = '#E9E9E9E9'
-	// xAxis lines
-	let c = 0
-	for (var i = showArea.from; i < showArea.to; i++) {
-		// because need to think like the bottom left origin
-		ctx.moveTo(rowWidth*c, CANVAS.height)										// 2
-		ctx.lineTo(rowWidth*c, 0)																// 1
-		c++
-	}
-	ctx.stroke()
+	// ctx.beginPath()
+	// ctx.strokeStyle = '#E9E9E9E9'
+	// // xAxis lines
+	// let c = 0
+	// for (var i = showArea.from; i < showArea.to; i++) {
+	// 	// because need to think like the bottom left origin
+	// 	ctx.moveTo(rowWidth*c, CANVAS.height)										// 2
+	// 	ctx.lineTo(rowWidth*c, 0)																// 1
+	// 	c++
+	// }
+	// ctx.stroke()
 }
 
 var drawChartLines = function() {
@@ -218,14 +258,14 @@ var drawChartLines = function() {
 		}
 		ctx.stroke()
 
-		let d = 0
-		for (var i = showArea.from; i < showArea.to; i++) {
-			ctx.beginPath()
-			ctx.arc(rowWidth*d,yrv(line.y[i]),5,0,2*Math.PI)
-			ctx.clearRect(rowWidth*d-5,yrv(line.y[i])-5,5*2,5*2)
-			ctx.stroke()
-			d++
-		}
+		// let d = 0
+		// for (var i = showArea.from; i < showArea.to; i++) {
+		// 	ctx.beginPath()
+		// 	ctx.arc(rowWidth*d,yrv(line.y[i]),5,0,2*Math.PI)
+		// 	ctx.clearRect(rowWidth*d-5,yrv(line.y[i])-5,5*2,5*2)
+		// 	ctx.stroke()
+		// 	d++
+		// }
 
 	})
 }
@@ -245,8 +285,8 @@ var redrawChartLines = function() {
 	drawChartLines()
 }
 
-var plugininteractivity = function() {
-	let step = showDates.length/MAPLAY.getBoundingClientRect().width
+var pluginteractivity = function() {
+	let step = allDates.length/MAPLAY.getBoundingClientRect().width
 	// int required!!1
 	showArea.from = parseInt(MAPSEL.offsetLeft*step)
 	showArea.to = parseInt((MAPSEL.offsetLeft+MAPSEL.getBoundingClientRect().width)*step)
@@ -259,6 +299,7 @@ var plugininteractivity = function() {
 	lastClientX = MAPSEL.getBoundingClientRect().x
 	MAPSEL.addEventListener('mousedown', mouseDown, false)
 	window.addEventListener('mouseup', mouseUp, false)
+	CANVAS.addEventListener('click', chartPopup, false)
 	
 	function mouseUp(e) {
 		redrawChartLines()
@@ -309,6 +350,76 @@ var plugininteractivity = function() {
 			}
 		}
 	}
+	function chartPopup(e) {
+		let rowWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
+		let showedLocation = e.clientX-DEFAULTS.xAxis.leftOffset
+		let showedIndex = Math.round(showedLocation/rowWidth)
+		let globalIndex = showArea.from+showedIndex
+		drawChartPopup(showedIndex,globalIndex)
+	}
+
+}
+
+var drawChartPopup = function(showedIndex,globalIndex) {
+	let popup = DEFAULTS.chartPopup
+	let rowWidth = DEFAULTS.rowWidth*DEFAULTS.xAxis.scale
+
+	// vertical line
+	ctx.lineWidth = 1.5
+	ctx.strokeStyle = popup.border
+	ctx.beginPath()
+	ctx.moveTo(rowWidth*showedIndex, CANVAS.height)
+	ctx.lineTo(rowWidth*showedIndex, popup.top+popup.radius)
+	ctx.stroke()
+	// lines circles
+	Object.entries(showLines).forEach(([key,line]) => {
+		ctx.lineWidth = 2.5
+		ctx.strokeStyle = line.color
+		let circleSize = popup.circle
+		ctx.beginPath()
+		ctx.arc(rowWidth*showedIndex,yrv(line.y[globalIndex]),circleSize,0,2*Math.PI)
+		ctx.clearRect(rowWidth*showedIndex-circleSize,yrv(line.y[globalIndex])-circleSize,circleSize*2,circleSize*2)
+		ctx.stroke()
+	})
+	// chart rectangle
+	popup.width = popup.padding+popup.between*Object.entries(showLines).length	// popup.padding*2
+	popup.height = 100
+	let defaultOffset = rowWidth*showedIndex-popup.width/2
+	if (false) bazat in miami
+	else if(defaultOffset<popup.width/2) popup.left = 0
+	else if(defaultOffset>CANVAS.width-popup.width) popup.left = CANVAS.width-popup.width
+	else popup.left = defaultOffset
+	ctx.strokeStyle = popup.border
+	ctx.fillStyle = popup.background
+	ctx.lineWidth = 1.5
+	ctx.roundRect(popup.left, popup.top, popup.width, popup.height, popup.radius).fill()
+	ctx.roundRect(popup.left, popup.top, popup.width, popup.height, popup.radius).stroke()
+	// popup title
+	ctx.font = "1.2em Helvetica"
+	ctx.fillStyle = popup.title
+	ctx.textAlign = 'center'
+	ctx.textBaseline = 'top'
+	ctx.beginPath()
+	// day of week? really??
+	ctx.fillText(t2d(allDates[globalIndex]), popup.left+popup.width/2, popup.top+popup.padding)
+	ctx.stroke()
+	// popup text
+	let c = 0
+	Object.entries(showLines).forEach(([key,line]) => {
+		ctx.font = "1.3em Helvetica"
+		ctx.fillStyle = line.color
+		ctx.textAlign = 'left'
+		ctx.beginPath()
+		ctx.fillText(shortNum(line.y[globalIndex],false), popup.left+popup.padding+popup.between*c, popup.top+popup.padding*3)
+		ctx.stroke()
+		ctx.font = "1em Helvetica"
+		ctx.textAlign = 'left'
+		ctx.beginPath()
+		ctx.fillText(line.name, popup.left+popup.padding+popup.between*c, popup.top+popup.padding*4.5)
+		ctx.stroke()
+		c++
+	})
+	
 }
 
 var drawMapLines = function() {
@@ -319,13 +430,13 @@ var drawMapLines = function() {
 		mtx.strokeStyle = line.color
 		mtx.beginPath()
 		line.x.forEach((dot,i) => {
-			let y = MAPLAY.height-line.y[i]*DEFAULTS.yAxis.scale*(MAPLAY.height/(DEFAULTS.yAxis.globalmax*DEFAULTS.yAxis.scale));
-			let rowWidth = MAPLAY.width/showDates.length;
-			mtx.lineTo(rowWidth*i, y);
+			let y = MAPLAY.height-line.y[i]*DEFAULTS.yAxis.scale*(MAPLAY.height/(DEFAULTS.yAxis.globalmax*DEFAULTS.yAxis.scale))
+			let rowWidth = MAPLAY.width/allDates.length
+			mtx.lineTo(rowWidth*i, y)
 		})
 		mtx.stroke()
 		mtx.fillStyle = 'rgba(137, 162, 165, 0.05)'
-		mtx.fillRect(0, 0, 400, 60);
+		mtx.fillRect(0, 0, 400, 60)
 
 	})
 }
@@ -334,14 +445,12 @@ var redrawMapLines = function() {
 	drawMapLines()
 }
 
-/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
+/* - - - - - - - - - -*/
 parseBadStruct()
 initSelectors()
-
-plugininteractivity()
-
+pluginteractivity()
 drawAxisLables()
 drawPlotLines()
 drawChartLines()
 drawMapLines()
+/* - - - - - - - - - -*/
