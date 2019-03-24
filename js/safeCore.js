@@ -8,16 +8,16 @@
 
 // the legacy extention by https://stackoverflow.com/a/7838871
 CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-  if (w < 2 * r) r = w / 2;
-  if (h < 2 * r) r = h / 2;
-  this.beginPath();
-  this.moveTo(x+r, y);
-  this.arcTo(x+w, y,   x+w, y+h, r);
-  this.arcTo(x+w, y+h, x,   y+h, r);
-  this.arcTo(x,   y+h, x,   y,   r);
-  this.arcTo(x,   y,   x+w, y,   r);
-  this.closePath();
-  return this;
+  if (w < 2 * r) r = w / 2
+  if (h < 2 * r) r = h / 2
+  this.beginPath()
+  this.moveTo(x+r, y)
+  this.arcTo(x+w, y,   x+w, y+h, r)
+  this.arcTo(x+w, y+h, x,   y+h, r)
+  this.arcTo(x,   y+h, x,   y,   r)
+  this.arcTo(x,   y,   x+w, y,   r)
+  this.closePath()
+  return this
 }
 // also nearly legacy "number to abbreviate number converter" by https://stackoverflow.com/a/10601315
 var shortNum = function (y, fix=true) {
@@ -100,7 +100,7 @@ const DEFAULTS = {
 		width: 0,				// dynamic
 		height: 0,			// dynamic
 		padding: 15,
-		between: 70,
+		between: 55,
 	}
 }
 
@@ -134,7 +134,7 @@ var initSelectors = function() {
 	MAPLAY = document.getElementById("mapLayout")
 	SWTCHS = document.getElementById("chartSwitches")
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
-	CANVAS.setAttribute('width', n2w(1000))
+	CANVAS.setAttribute('width', n2w(400))
 	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width)
 	DEFAULTS.xAxis.leftOffset = CANVAS.getBoundingClientRect().left
 	DEFAULTS.mapSelector.leftOffset = MAPLAY.getBoundingClientRect().left
@@ -207,7 +207,7 @@ var drawAxisLables = function() {
 	// xAxis labels (dynamic)
 	const visible = parseInt((showArea.to-showArea.from)/DEFAULTS.xAxis.labels)
 	let c = 0
-	for (var i = showArea.from; i < showArea.to; i++) {
+	for (var i = showArea.from; i <= showArea.to; i++) {
 		// love $this <3
 		if(i&&!(i%visible)) ctx.fillText(t2d(allDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
 		c++
@@ -252,7 +252,7 @@ var drawChartLines = function() {
 		ctx.strokeStyle = line.color
 		ctx.beginPath()
 		let c = 0	//
-		for (var i = showArea.from; i < showArea.to; i++) {
+		for (var i = showArea.from; i <= showArea.to; i++) {
 			ctx.lineTo(rowWidth*c, yrv(line.y[i]))
 			c++
 		}
@@ -386,7 +386,7 @@ var drawChartPopup = function(showedIndex,globalIndex) {
 	popup.height = 100
 	let defaultOffset = rowWidth*showedIndex-popup.width/2
 	if (false) bazat in miami
-	else if(defaultOffset<popup.width/2) popup.left = 0
+	else if(defaultOffset<0) popup.left = 0
 	else if(defaultOffset>CANVAS.width-popup.width) popup.left = CANVAS.width-popup.width
 	else popup.left = defaultOffset
 	ctx.strokeStyle = popup.border
@@ -395,7 +395,7 @@ var drawChartPopup = function(showedIndex,globalIndex) {
 	ctx.roundRect(popup.left, popup.top, popup.width, popup.height, popup.radius).fill()
 	ctx.roundRect(popup.left, popup.top, popup.width, popup.height, popup.radius).stroke()
 	// popup title
-	ctx.font = "1.2em Helvetica"
+	ctx.font = "1.1em Helvetica"
 	ctx.fillStyle = popup.title
 	ctx.textAlign = 'center'
 	ctx.textBaseline = 'top'
@@ -406,7 +406,7 @@ var drawChartPopup = function(showedIndex,globalIndex) {
 	// popup text
 	let c = 0
 	Object.entries(showLines).forEach(([key,line]) => {
-		ctx.font = "1.3em Helvetica"
+		ctx.font = "1.1em Helvetica"
 		ctx.fillStyle = line.color
 		ctx.textAlign = 'left'
 		ctx.beginPath()
