@@ -20,8 +20,8 @@ CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
   return this
 }
 // also nearly legacy "number to abbreviate number converter" by https://stackoverflow.com/a/10601315
-var shortNum = function (y, fix=true) {
-  let newValue = (fix)?parseInt(DEFAULTS.yAxis.showedmax/DEFAULTS.yAxis.labels*y):y
+var shortNum = function (y, hotfix=true) {
+  let newValue = (hotfix)?parseInt(DEFAULTS.yAxis.showedmax/DEFAULTS.yAxis.labels*y):y
   const suffixes = ["", "K", "M", "B","T"]
   let suffixNum = 0
   while (newValue >= 1000) {
@@ -40,7 +40,7 @@ var w2n =(w)=> w.replace('px','')
 var n2w =(n)=> n+'px'
 
 // elements
-var CANVAS,MAPSEL,MAPLAY,SWTCHS
+var CNTNER,CANVAS,MAPSEL,MAPLAY,SWTCHS
 var ctx,mtx
 // structures
 var allLines = Array()
@@ -61,6 +61,7 @@ var lastSelectorWidth
 var mapselMode		// scroll or lscale/rscale
 
 const DEFAULTS = {
+	width: 400,
 	lineJoin: 'round',
 	rowHeight: 60,
 	rowWidth: 60,		// dynamic
@@ -129,13 +130,16 @@ var parseBadStruct = function() {
 }
 
 var initSelectors = function() {
+	CNTNER = document.getElementById("chartContainer")
 	CANVAS = document.getElementById("safeChart")
 	MAPSEL = document.getElementById("mapSelector")
 	MAPLAY = document.getElementById("mapLayout")
 	SWTCHS = document.getElementById("chartSwitches")
+	DEFAULTS.width = CNTNER.getBoundingClientRect().width-30
 	CANVAS.setAttribute('height', n2w(DEFAULTS.yAxis.lines * DEFAULTS.rowHeight + DEFAULTS.yAxis.margin))
-	CANVAS.setAttribute('width', n2w(400))
-	MAPSEL.style.width = n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width)
+	CANVAS.setAttribute('width', n2w(DEFAULTS.width))
+	MAPLAY.setAttribute('width', n2w(DEFAULTS.width))
+	MAPSEL.style.width = n2w(MAPLAY.width/10) // n2w(DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width)
 	DEFAULTS.xAxis.leftOffset = CANVAS.getBoundingClientRect().left
 	DEFAULTS.mapSelector.leftOffset = MAPLAY.getBoundingClientRect().left
 	DEFAULTS.mapSelector.minWidth = DEFAULTS.rowWidth * DEFAULTS.xAxis.scale * allDates.length / CANVAS.width
@@ -207,7 +211,7 @@ var drawAxisLables = function() {
 	// xAxis labels (dynamic)
 	const visible = parseInt((showArea.to-showArea.from)/DEFAULTS.xAxis.labels)
 	let c = 0
-	for (var i = showArea.from; i <= showArea.to; i++) {
+	for (var i = showArea.from; i < showArea.to; i++) {
 		// love $this <3
 		if(i&&!(i%visible)) ctx.fillText(t2d(allDates[i]), rowWidth*c, CANVAS.height - DEFAULTS.xAxis.padding)
 		c++
@@ -252,6 +256,7 @@ var drawChartLines = function() {
 		ctx.strokeStyle = line.color
 		ctx.beginPath()
 		let c = 0	//
+		// i <= showArea.to // yeeeh, it's work
 		for (var i = showArea.from; i <= showArea.to; i++) {
 			ctx.lineTo(rowWidth*c, yrv(line.y[i]))
 			c++
@@ -331,16 +336,14 @@ var pluginteractivity = function() {
 		if (mapselMode=='lscale') {
 			dynamicOffset = e.clientX - outerLeftOffset
 			let currentWidth = middleLeftOffset - dynamicOffset + lastSelectorWidth
-			if(dynamicOffset>=0) { // to middleLeftOffset + DEFAULTS.mapSelector.minWidth
+			if((dynamicOffset>=0)&&(currentWidth>=DEFAULTS.mapSelector.minWidth)) {
 				MAPSEL.style.left = n2w(dynamicOffset)
 				MAPSEL.style.width = n2w(currentWidth)
 			}
 		}
 		if (mapselMode=='rscale') {
 			let currentWidth = e.clientX - outerLeftOffset - middleLeftOffset
-			// let temp = lastSelectorWidth + dynamicOffset
-			// if(temp<=LAYOUT.width) { // DEFAULTS.mapSelector.minWidth
-			if(dynamicOffset<=(LAYOUT.width-lastSelectorWidth)) { // from DEFAULTS.mapSelector.minWidth
+			if((dynamicOffset<=(LAYOUT.width-lastSelectorWidth))&&(dynamicOffset>=middleLeftOffset+DEFAULTS.mapSelector.minWidth-lastSelectorWidth)) {
 				MAPSEL.style.width = n2w(currentWidth)
 			}
 		}
@@ -436,7 +439,7 @@ var drawMapLines = function() {
 		})
 		mtx.stroke()
 		mtx.fillStyle = 'rgba(137, 162, 165, 0.05)'
-		mtx.fillRect(0, 0, 400, 60)
+		mtx.fillRect(0, 0, DEFAULTS.width, 60)
 
 	})
 }
